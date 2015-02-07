@@ -1,4 +1,4 @@
-## ANSI escape codes color highlighting for SublimeText 3
+## ANSI escape codes color highlighting for ST3
 
 From time to time, you end up with a file in your editor that has ANSI escape codes in plain text which makes it really hard to read the content. Something that has been added to make your life easier, stands in your way and it's really annoying. 
 
