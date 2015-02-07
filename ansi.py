@@ -11,7 +11,7 @@ class AnsiCommand(sublime_plugin.TextCommand):
         if v.settings().get("ansi_enabled"):
             return
         v.settings().set("ansi_enabled", True)
-        v.settings().set("color_scheme", "Packages/User/ANSI/ansi.tmTheme")
+        v.settings().set("color_scheme", "Packages/User/ANSIescape/ansi.tmTheme")
         v.settings().set("draw_white_space", "none")
 
         # removing unsupported ansi escape codes before going forward: 2m 4m 5m 7m 8m
@@ -58,11 +58,11 @@ class UndoAnsiCommand(sublime_plugin.WindowCommand):
 class AnsiEventListener(sublime_plugin.EventListener):
     def on_load_async(self, view):
         view.settings().add_on_change("CHECK_FOR_ANSI_SYNTAX", lambda: self.syntax_change(view))
-        if view.settings().get("syntax") == "Packages/ANSI/ANSI.tmLanguage":
+        if view.settings().get("syntax") == "Packages/ANSIescape/ANSI.tmLanguage":
             view.run_command("ansi")
 
     def syntax_change(self, view):
-        if view.settings().get("syntax") == "Packages/ANSI/ANSI.tmLanguage":
+        if view.settings().get("syntax") == "Packages/ANSIescape/ANSI.tmLanguage":
             view.run_command("ansi")
         elif view.settings().get("ansi_enabled"):
             view.window().run_command("undo_ansi")
@@ -106,7 +106,7 @@ def generate_color_scheme(cs_file):
 
 
 def plugin_loaded():
-    ansi_cs_dir = os.path.join(sublime.packages_path(), "User", "ANSI")
+    ansi_cs_dir = os.path.join(sublime.packages_path(), "User", "ANSIescape")
     if not os.path.exists(ansi_cs_dir):
         os.makedirs(ansi_cs_dir)
     cs_file = os.path.join(ansi_cs_dir, "ansi.tmTheme")
