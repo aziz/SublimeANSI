@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import sublime, sublime_plugin, os
+import Default
 
 DEBUG = False
 
@@ -66,6 +67,17 @@ class AnsiEventListener(sublime_plugin.EventListener):
             view.run_command("ansi")
         elif view.settings().get("ansi_enabled"):
             view.window().run_command("undo_ansi")
+
+
+class AnsiColorBuildCommand(Default.exec.ExecCommand):
+    def on_finished(self, proc):
+        super(AnsiColorBuildCommand, self).on_finished(proc)
+
+        view = self.output_view
+        if view.settings().get("syntax") == "Packages/ANSIescape/ANSI.tmLanguage":
+            view.settings().set("ansi_enabled", False)
+            self.output_view.set_read_only(False)
+            view.run_command('ansi')
 
 
 CS_TEMPLATE = """<?xml version="1.0" encoding="UTF-8"?>
