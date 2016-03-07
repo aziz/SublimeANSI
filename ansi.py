@@ -1,12 +1,15 @@
 # -*- coding: utf-8 -*-
 
-import sublime, sublime_plugin, os
+import sublime
+import sublime_plugin
+import os
 import Default
 
 DEBUG = False
 
 
 class AnsiCommand(sublime_plugin.TextCommand):
+
     def run(self, edit):
         v = self.view
         if v.settings().get("ansi_enabled"):
@@ -41,6 +44,7 @@ class AnsiCommand(sublime_plugin.TextCommand):
 
 
 class UndoAnsiCommand(sublime_plugin.WindowCommand):
+
     def run(self):
         view = self.window.active_view()
         view.settings().erase("ansi_enabled")
@@ -57,6 +61,7 @@ class UndoAnsiCommand(sublime_plugin.WindowCommand):
 
 
 class AnsiEventListener(sublime_plugin.EventListener):
+
     def on_load_async(self, view):
         view.settings().add_on_change("CHECK_FOR_ANSI_SYNTAX", lambda: self.syntax_change(view))
         if view.settings().get("syntax") == "Packages/ANSIescape/ANSI.tmLanguage":
@@ -70,6 +75,7 @@ class AnsiEventListener(sublime_plugin.EventListener):
 
 
 class AnsiColorBuildCommand(Default.exec.ExecCommand):
+
     def on_finished(self, proc):
         super(AnsiColorBuildCommand, self).on_finished(proc)
 
