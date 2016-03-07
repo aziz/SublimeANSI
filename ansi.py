@@ -32,7 +32,9 @@ class AnsiCommand(sublime_plugin.TextCommand):
                 ansi_regions = v.find_all(regex)
                 if DEBUG and ansi_regions:
                     print("scope: {}\nregex: {}\n regions: {}\n----------\n".format(ansi_scope, regex, ansi_regions))
-                v.add_regions(ansi_scope, ansi_regions, ansi_scope, '', sublime.DRAW_NO_OUTLINE)
+                if ansi_regions:
+                    sum_regions = v.get_regions(ansi_scope) + ansi_regions
+                    v.add_regions(ansi_scope, sum_regions, ansi_scope, '', sublime.DRAW_NO_OUTLINE)
 
         # removing the rest of  ansi escape codes
         ansi_codes = v.find_all(r'(\x1b\[[\d;]*m){1,}')
@@ -76,8 +78,8 @@ class AnsiEventListener(sublime_plugin.EventListener):
 
 class AnsiColorBuildCommand(Default.exec.ExecCommand):
 
-    def on_finished(self, proc):
-        super(AnsiColorBuildCommand, self).on_finished(proc)
+    def on_data(self, proc, data):
+        super(AnsiColorBuildCommand, self).on_data(proc, data)
 
         view = self.output_view
         if view.settings().get("syntax") == "Packages/ANSIescape/ANSI.tmLanguage":
