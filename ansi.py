@@ -30,7 +30,7 @@ class AnsiCommand(sublime_plugin.TextCommand):
                 regex = r'({0}{1}(?!\x1b))(.+?)(?=\x1b)|({1}{0}(?!\x1b))(.+?)(?=\x1b)'.format(fg['code'], bg['code'])
                 ansi_scope = "{0}{1}".format(fg['scope'], bg['scope'])
                 ansi_regions = v.find_all(regex)
-                if DEBUG:
+                if DEBUG and ansi_regions:
                     print("scope: {}\nregex: {}\n regions: {}\n----------\n".format(ansi_scope, regex, ansi_regions))
                 v.add_regions(ansi_scope, ansi_regions, ansi_scope, '', sublime.DRAW_NO_OUTLINE)
 
