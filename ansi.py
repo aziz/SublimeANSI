@@ -31,7 +31,7 @@ class AnsiCommand(sublime_plugin.TextCommand):
                 ansi_scope = "{0}{1}".format(fg['scope'], bg['scope'])
                 ansi_regions = v.find_all(regex)
                 if DEBUG:
-                    print(ansi_scope, '\n', regex, '\n', ansi_regions, '---------------')
+                    print("scope: {}\nregex: {}\n regions: {}\n----------\n".format(ansi_scope, regex, ansi_regions))
                 v.add_regions(ansi_scope, ansi_regions, ansi_scope, '', sublime.DRAW_NO_OUTLINE)
 
         # removing the rest of  ansi escape codes
