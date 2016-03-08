@@ -78,14 +78,24 @@ class AnsiEventListener(sublime_plugin.EventListener):
 
 class AnsiColorBuildCommand(Default.exec.ExecCommand):
 
-    def on_data(self, proc, data):
-        super(AnsiColorBuildCommand, self).on_data(proc, data)
-
+    def process_ansi(self):
         view = self.output_view
         if view.settings().get("syntax") == "Packages/ANSIescape/ANSI.tmLanguage":
             view.settings().set("ansi_enabled", False)
             self.output_view.set_read_only(False)
             view.run_command('ansi')
+
+    def on_data(self, proc, data):
+        super(AnsiColorBuildCommand, self).on_data(proc, data)
+        settings = sublime.load_settings("ansi.sublime-settings")
+        if settings.get("process_on_data", False):
+            self.process_ansi()
+
+    def on_finished(self, proc):
+        super(AnsiColorBuildCommand, self).on_finished(proc)
+        settings = sublime.load_settings("ansi.sublime-settings")
+        if settings.get("process_on_finish", True):
+            self.process_ansi()
 
 
 CS_TEMPLATE = """<?xml version="1.0" encoding="UTF-8"?>
