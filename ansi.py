@@ -78,6 +78,21 @@ class AnsiEventListener(sublime_plugin.EventListener):
 
 class AnsiColorBuildCommand(Default.exec.ExecCommand):
 
+    on_data = False
+    on_finish = True
+
+    @classmethod
+    def update_build_settings(cls):
+        print("updating ANSI build settings...")
+        settings = sublime.load_settings("ansi.sublime-settings")
+        val = settings.get("ANSI_process_trigger", "on_finish")
+        if val == "on_finish":
+            cls.on_data = False
+            cls.on_finish = True
+        elif val == "on_data":
+            cls.on_data = True
+            cls.on_finish = False
+
     def process_ansi(self):
         view = self.output_view
         if view.settings().get("syntax") == "Packages/ANSIescape/ANSI.tmLanguage":
@@ -87,14 +102,12 @@ class AnsiColorBuildCommand(Default.exec.ExecCommand):
 
     def on_data(self, proc, data):
         super(AnsiColorBuildCommand, self).on_data(proc, data)
-        settings = sublime.load_settings("ansi.sublime-settings")
-        if settings.get("process_on_data", False):
+        if self.on_data:
             self.process_ansi()
 
     def on_finished(self, proc):
         super(AnsiColorBuildCommand, self).on_finished(proc)
-        settings = sublime.load_settings("ansi.sublime-settings")
-        if settings.get("process_on_finish", True):
+        if self.finish:
             self.process_ansi()
 
 
@@ -144,8 +157,10 @@ def plugin_loaded():
         generate_color_scheme(cs_file)
     settings = sublime.load_settings("ansi.sublime-settings")
     settings.add_on_change("ANSI_COLORS_CHANGE", lambda: generate_color_scheme(cs_file))
+    settings.add_on_change("ANSI_SETTINGS_CHANGE", lambda: AnsiColorBuildCommand.update_build_settings())
 
 
 def plugin_unloaded():
     settings = sublime.load_settings("ansi.sublime-settings")
     settings.clear_on_change("ANSI_COLORS_CHANGE")
+    settings.clear_on_change("ANSI_SETTINGS_CHANGE")

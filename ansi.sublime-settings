@@ -40,6 +40,9 @@
     "lineHighlight":    "#FFFFFF00",
     "selection":        "#FFFFFF33"
   },
-  "process_on_finish": true,
-  "process_on_data": false,
+  // when to process ANSI encoded string
+  // possible vals:
+  // - on_finish - after whole build process (default)
+  // - on_data - when new data is posted to exec output
+  "ANSI_process_trigger": "on_data",
 }
