@@ -79,7 +79,7 @@ class AnsiEventListener(sublime_plugin.EventListener):
 class AnsiColorBuildCommand(Default.exec.ExecCommand):
 
     process_on_data = False
-    pricess_on_finish = True
+    process_on_finish = True
 
     @classmethod
     def update_build_settings(cls):
@@ -88,10 +88,10 @@ class AnsiColorBuildCommand(Default.exec.ExecCommand):
         val = settings.get("ANSI_process_trigger", "on_finish")
         if val == "on_finish":
             cls.process_on_data = False
-            cls.pricess_on_finish = True
+            cls.process_on_finish = True
         elif val == "on_data":
             cls.process_on_data = True
-            cls.pricess_on_finish = False
+            cls.process_on_finish = False
 
     def process_ansi(self):
         view = self.output_view
@@ -107,7 +107,7 @@ class AnsiColorBuildCommand(Default.exec.ExecCommand):
 
     def on_finished(self, proc):
         super(AnsiColorBuildCommand, self).on_finished(proc)
-        if self.pricess_on_finish:
+        if self.process_on_finish:
             self.process_ansi()
 
 
@@ -156,6 +156,7 @@ def plugin_loaded():
     if not os.path.isfile(cs_file):
         generate_color_scheme(cs_file)
     settings = sublime.load_settings("ansi.sublime-settings")
+    AnsiColorBuildCommand.update_build_settings()
     settings.add_on_change("ANSI_COLORS_CHANGE", lambda: generate_color_scheme(cs_file))
     settings.add_on_change("ANSI_SETTINGS_CHANGE", lambda: AnsiColorBuildCommand.update_build_settings())
 
