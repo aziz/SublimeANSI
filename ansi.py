@@ -64,12 +64,18 @@ class UndoAnsiCommand(sublime_plugin.WindowCommand):
 
 class AnsiEventListener(sublime_plugin.EventListener):
 
+    def on_new_async(self, view):
+        self.assign_event_listner(view)
+
     def on_load_async(self, view):
-        view.settings().add_on_change("CHECK_FOR_ANSI_SYNTAX", lambda: self.syntax_change(view))
+        self.assign_event_listner(view)
+
+    def assign_event_listner(self, view):
+        view.settings().add_on_change("CHECK_FOR_ANSI_SYNTAX", lambda: self.detect_syntax_change(view))
         if view.settings().get("syntax") == "Packages/ANSIescape/ANSI.tmLanguage":
             view.run_command("ansi")
 
-    def syntax_change(self, view):
+    def detect_syntax_change(self, view):
         if view.settings().get("syntax") == "Packages/ANSIescape/ANSI.tmLanguage":
             view.run_command("ansi")
         elif view.settings().get("ansi_enabled"):
@@ -159,7 +165,9 @@ def plugin_loaded():
     AnsiColorBuildCommand.update_build_settings()
     settings.add_on_change("ANSI_COLORS_CHANGE", lambda: generate_color_scheme(cs_file))
     settings.add_on_change("ANSI_SETTINGS_CHANGE", lambda: AnsiColorBuildCommand.update_build_settings())
-
+    for window in sublime.windows():
+        for view in window.views():
+           AnsiEventListener().assign_event_listner(view)
 
 def plugin_unloaded():
     settings = sublime.load_settings("ansi.sublime-settings")
