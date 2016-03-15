@@ -1,12 +1,15 @@
 # -*- coding: utf-8 -*-
 
-import sublime, sublime_plugin, os
+import sublime
+import sublime_plugin
+import os
 import Default
 
 DEBUG = False
 
 
 class AnsiCommand(sublime_plugin.TextCommand):
+
     def run(self, edit):
         v = self.view
         if v.settings().get("ansi_enabled"):
@@ -27,9 +30,11 @@ class AnsiCommand(sublime_plugin.TextCommand):
                 regex = r'({0}{1}(?!\x1b))(.+?)(?=\x1b)|({1}{0}(?!\x1b))(.+?)(?=\x1b)'.format(fg['code'], bg['code'])
                 ansi_scope = "{0}{1}".format(fg['scope'], bg['scope'])
                 ansi_regions = v.find_all(regex)
-                if DEBUG:
-                    print(ansi_scope, '\n', regex, '\n', ansi_regions, '---------------')
-                v.add_regions(ansi_scope, ansi_regions, ansi_scope, '', sublime.DRAW_NO_OUTLINE)
+                if DEBUG and ansi_regions:
+                    print("scope: {}\nregex: {}\n regions: {}\n----------\n".format(ansi_scope, regex, ansi_regions))
+                if ansi_regions:
+                    sum_regions = v.get_regions(ansi_scope) + ansi_regions
+                    v.add_regions(ansi_scope, sum_regions, ansi_scope, '', sublime.DRAW_NO_OUTLINE)
 
         # removing the rest of  ansi escape codes
         ansi_codes = v.find_all(r'(\x1b\[[\d;]*m){1,}')
@@ -41,6 +46,7 @@ class AnsiCommand(sublime_plugin.TextCommand):
 
 
 class UndoAnsiCommand(sublime_plugin.WindowCommand):
+
     def run(self):
         view = self.window.active_view()
         view.settings().erase("ansi_enabled")
@@ -57,6 +63,7 @@ class UndoAnsiCommand(sublime_plugin.WindowCommand):
 
 
 class AnsiEventListener(sublime_plugin.EventListener):
+
     def on_load_async(self, view):
         view.settings().add_on_change("CHECK_FOR_ANSI_SYNTAX", lambda: self.syntax_change(view))
         if view.settings().get("syntax") == "Packages/ANSIescape/ANSI.tmLanguage":
@@ -70,14 +77,38 @@ class AnsiEventListener(sublime_plugin.EventListener):
 
 
 class AnsiColorBuildCommand(Default.exec.ExecCommand):
-    def on_finished(self, proc):
-        super(AnsiColorBuildCommand, self).on_finished(proc)
 
+    process_on_data = False
+    process_on_finish = True
+
+    @classmethod
+    def update_build_settings(cls):
+        print("updating ANSI build settings...")
+        settings = sublime.load_settings("ansi.sublime-settings")
+        val = settings.get("ANSI_process_trigger", "on_finish")
+        if val == "on_finish":
+            cls.process_on_data = False
+            cls.process_on_finish = True
+        elif val == "on_data":
+            cls.process_on_data = True
+            cls.process_on_finish = False
+
+    def process_ansi(self):
         view = self.output_view
         if view.settings().get("syntax") == "Packages/ANSIescape/ANSI.tmLanguage":
             view.settings().set("ansi_enabled", False)
             self.output_view.set_read_only(False)
             view.run_command('ansi')
+
+    def on_data(self, proc, data):
+        super(AnsiColorBuildCommand, self).on_data(proc, data)
+        if self.process_on_data:
+            self.process_ansi()
+
+    def on_finished(self, proc):
+        super(AnsiColorBuildCommand, self).on_finished(proc)
+        if self.process_on_finish:
+            self.process_ansi()
 
 
 CS_TEMPLATE = """<?xml version="1.0" encoding="UTF-8"?>
@@ -125,9 +156,12 @@ def plugin_loaded():
     if not os.path.isfile(cs_file):
         generate_color_scheme(cs_file)
     settings = sublime.load_settings("ansi.sublime-settings")
+    AnsiColorBuildCommand.update_build_settings()
     settings.add_on_change("ANSI_COLORS_CHANGE", lambda: generate_color_scheme(cs_file))
+    settings.add_on_change("ANSI_SETTINGS_CHANGE", lambda: AnsiColorBuildCommand.update_build_settings())
 
 
 def plugin_unloaded():
     settings = sublime.load_settings("ansi.sublime-settings")
     settings.clear_on_change("ANSI_COLORS_CHANGE")
+    settings.clear_on_change("ANSI_SETTINGS_CHANGE")
