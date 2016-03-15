@@ -18,6 +18,12 @@ class AnsiCommand(sublime_plugin.TextCommand):
         v.settings().set("color_scheme", "Packages/User/ANSIescape/ansi.tmTheme")
         v.settings().set("draw_white_space", "none")
 
+        if not v.settings().has("ansi_scratch"):
+            v.settings().set("ansi_scratch", v.is_scratch())
+
+        if not v.settings().has("ansi_read_only"):
+            v.settings().set("ansi_read_only", v.is_read_only())
+
         # removing unsupported ansi escape codes before going forward: 2m 4m 5m 7m 8m
         ansi_unsupported_codes = v.find_all(r'(\x1b\[(0;)?(2|4|5|7|8)m)')
         ansi_unsupported_codes.reverse()
@@ -54,14 +60,16 @@ class UndoAnsiCommand(sublime_plugin.WindowCommand):
         view.settings().erase("color_scheme")
         view.settings().erase("draw_white_space")
         view.set_read_only(False)
-        view.set_scratch(False)
         settings = sublime.load_settings("ansi.sublime-settings")
         for bg in settings.get("ANSI_BG", []):
             for fg in settings.get("ANSI_FG", []):
                 ansi_scope = "{0}{1}".format(fg['scope'], bg['scope'])
                 view.erase_regions(ansi_scope)
         self.window.run_command("undo")
-
+        view.set_scratch(view.settings().get("ansi_scratch", False))
+        view.settings().erase("ansi_scratch")
+        view.set_read_only(view.settings().get("ansi_read_only", False))
+        view.settings().erase("ansi_read_only")
 
 class AnsiEventListener(sublime_plugin.EventListener):
 
