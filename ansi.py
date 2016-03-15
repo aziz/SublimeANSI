@@ -39,10 +39,11 @@ class AnsiCommand(sublime_plugin.TextCommand):
         # removing the rest of  ansi escape codes
         ansi_codes = v.find_all(r'(\x1b\[[\d;]*m){1,}')
         ansi_codes.reverse()
+        v.set_scratch(True)
+        v.set_read_only(False)
         for r in ansi_codes:
             v.erase(edit, r)
         v.set_read_only(True)
-        v.set_scratch(True)
 
 
 class UndoAnsiCommand(sublime_plugin.WindowCommand):
@@ -103,7 +104,6 @@ class AnsiColorBuildCommand(Default.exec.ExecCommand):
         view = self.output_view
         if view.settings().get("syntax") == "Packages/ANSIescape/ANSI.tmLanguage":
             view.settings().set("ansi_enabled", False)
-            self.output_view.set_read_only(False)
             view.run_command('ansi')
 
     def on_data(self, proc, data):
