@@ -20,9 +20,11 @@ class AnsiCommand(sublime_plugin.TextCommand):
 
         if not v.settings().has("ansi_scratch"):
             v.settings().set("ansi_scratch", v.is_scratch())
+        v.set_scratch(True)
 
         if not v.settings().has("ansi_read_only"):
             v.settings().set("ansi_read_only", v.is_read_only())
+        v.set_read_only(False)
 
         # removing unsupported ansi escape codes before going forward: 2m 4m 5m 7m 8m
         ansi_unsupported_codes = v.find_all(r'(\x1b\[(0;)?(2|4|5|7|8)m)')
@@ -45,8 +47,6 @@ class AnsiCommand(sublime_plugin.TextCommand):
         # removing the rest of  ansi escape codes
         ansi_codes = v.find_all(r'(\x1b\[[\d;]*m){1,}')
         ansi_codes.reverse()
-        v.set_scratch(True)
-        v.set_read_only(False)
         for r in ansi_codes:
             v.erase(edit, r)
         v.set_read_only(True)
