@@ -43,9 +43,9 @@ Likewise, if you would like to display ANSI colors in your existing [build-comma
 ```
 
 
-# Killing the build process
+#### Killing the build process
 
-If you want to kill build process during execution, use this command in sublime console (`ctrl+\``):
+If you want to kill build process during execution, use this command in sublime console (``ctrl+` ``):
 
 ```shell
 window.run_command("ansi_color_build", args={"kill": True})
@@ -61,7 +61,7 @@ You can also add key binding eg.:
 ]
 ```
 
-# Formatting ANSI codes during build process
+#### Formatting ANSI codes during build process
 
 In order to format ANSI codes during building process change 'ANSI_process_trigger' in [`ansi.sublime-settings`](ansi.sublime-settings).
 
