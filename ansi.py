@@ -3,6 +3,7 @@
 import sublime
 import sublime_plugin
 import os
+import re
 import Default
 
 DEBUG = False
@@ -32,10 +33,23 @@ class AnsiCommand(sublime_plugin.TextCommand):
         for r in ansi_unsupported_codes:
             v.replace(edit, r, "\x1b[1m")
 
+        # collect colors from file content and make them a string
+        color_str = '\x1b' + '\x1b'.join({
+            v for v in
+            re.findall(
+                r'(\[[\d;]*m)', # find all possible colors
+                v.substr(sublime.Region(0, v.size())) # file content
+            )
+        }) + '\x1b'
+
         settings = sublime.load_settings("ansi.sublime-settings")
-        for bg in settings.get("ANSI_BG", []):
-            for fg in settings.get("ANSI_FG", []):
-                regex = r'({0}{1}(?!\x1b))(.+?)(?=\x1b)|({1}{0}(?!\x1b))(.+?)(?=\x1b)'.format(fg['code'], bg['code'])
+        # filter out unnecessary colors in user settings
+        bgs = [v for v in settings.get("ANSI_BG", []) if re.search(v['code'], color_str) is not None]
+        fgs = [v for v in settings.get("ANSI_FG", []) if re.search(v['code'], color_str) is not None]
+
+        for bg in bgs:
+            for fg in fgs:
+                regex = r'(?:(?:{0}{1})|(?:{1}{0}))[^\x1b]*'.format(fg['code'], bg['code'])
                 ansi_scope = "{0}{1}".format(fg['scope'], bg['scope'])
                 ansi_regions = v.find_all(regex)
                 if DEBUG and ansi_regions:
