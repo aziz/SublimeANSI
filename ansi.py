@@ -34,13 +34,12 @@ class AnsiCommand(sublime_plugin.TextCommand):
             v.replace(edit, r, "\x1b[1m")
 
         # collect colors from file content and make them a string
-        color_str = '\x1b' + '\x1b'.join({
-            v for v in
+        color_str = '\x1b' + '\x1b'.join(set(
             re.findall(
                 r'(\[[\d;]*m)', # find all possible colors
                 v.substr(sublime.Region(0, v.size())) # file content
             )
-        }) + '\x1b'
+        )) + '\x1b'
 
         settings = sublime.load_settings("ansi.sublime-settings")
         # filter out unnecessary colors in user settings
