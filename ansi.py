@@ -3,6 +3,7 @@
 import sublime
 import sublime_plugin
 import os
+import re
 import Default
 
 DEBUG = False
@@ -32,10 +33,23 @@ class AnsiCommand(sublime_plugin.TextCommand):
         for r in ansi_unsupported_codes:
             v.replace(edit, r, "\x1b[1m")
 
+        # collect colors from file content and make them a string
+        color_str = "{0}{1}{0}".format(
+            '\x1b',
+            '\x1b'.join(set(re.findall(
+                r'(\[[\d;]*m)', # find all possible colors
+                v.substr(sublime.Region(0, v.size())) # file content
+            )))
+        )
+
         settings = sublime.load_settings("ansi.sublime-settings")
-        for bg in settings.get("ANSI_BG", []):
-            for fg in settings.get("ANSI_FG", []):
-                regex = r'({0}{1}(?!\x1b))(.+?)(?=\x1b)|({1}{0}(?!\x1b))(.+?)(?=\x1b)'.format(fg['code'], bg['code'])
+        # filter out unnecessary colors in user settings
+        bgs = [v for v in settings.get("ANSI_BG", []) if re.search(v['code'], color_str) is not None]
+        fgs = [v for v in settings.get("ANSI_FG", []) if re.search(v['code'], color_str) is not None]
+
+        for bg in bgs:
+            for fg in fgs:
+                regex = r'(?:(?:{0}{1})|(?:{1}{0}))[^\x1b]*'.format(fg['code'], bg['code'])
                 ansi_scope = "{0}{1}".format(fg['scope'], bg['scope'])
                 ansi_regions = v.find_all(regex)
                 if DEBUG and ansi_regions:
@@ -44,7 +58,7 @@ class AnsiCommand(sublime_plugin.TextCommand):
                     sum_regions = v.get_regions(ansi_scope) + ansi_regions
                     v.add_regions(ansi_scope, sum_regions, ansi_scope, '', sublime.DRAW_NO_OUTLINE)
 
-        # removing the rest of  ansi escape codes
+        # removing the rest of ansi escape codes
         ansi_codes = v.find_all(r'(\x1b\[[\d;]*m){1,}')
         ansi_codes.reverse()
         for r in ansi_codes:
@@ -70,6 +84,7 @@ class UndoAnsiCommand(sublime_plugin.WindowCommand):
         view.settings().erase("ansi_scratch")
         view.set_read_only(view.settings().get("ansi_read_only", False))
         view.settings().erase("ansi_read_only")
+
 
 class AnsiEventListener(sublime_plugin.EventListener):
 
@@ -175,7 +190,8 @@ def plugin_loaded():
     settings.add_on_change("ANSI_SETTINGS_CHANGE", lambda: AnsiColorBuildCommand.update_build_settings())
     for window in sublime.windows():
         for view in window.views():
-           AnsiEventListener().assign_event_listner(view)
+            AnsiEventListener().assign_event_listner(view)
+
 
 def plugin_unloaded():
     settings = sublime.load_settings("ansi.sublime-settings")
