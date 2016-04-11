@@ -44,6 +44,5 @@
   // possible vals:
   // - on_finish - after whole build process (default)
   // - on_data - when new data is posted to exec output
-  // - pre_data - before new_data is posted to exec output
   "ANSI_process_trigger": "on_finish",
 }

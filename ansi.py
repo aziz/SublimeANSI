@@ -7,27 +7,18 @@ import Default
 import re
 from collections import namedtuple
 
-AnsiPoint = namedtuple("AnsiPoint", "scope regex")
+AnsiDefinition = namedtuple("AnsiDefinition", "scope regex")
 
 DEBUG = False
 
 
-def ansi_point_generator():
+def ansi_definitions():
     settings = sublime.load_settings("ansi.sublime-settings")
     for bg in settings.get("ANSI_BG", []):
         for fg in settings.get("ANSI_FG", []):
             regex = r'({0}{1}(?!\x1b))(.+?)(?=\x1b)|({1}{0}(?!\x1b))(.+?)(?=\x1b)'.format(fg['code'], bg['code'])
             scope = "{0}{1}".format(fg['scope'], bg['scope'])
-            yield AnsiPoint(scope, regex)
-
-
-def subtract_region(p, begin, end):
-    if p < begin:
-        return p
-    elif p < end:
-        return begin
-    else:
-        return p - (end - begin)
+            yield AnsiDefinition(scope, regex)
 
 
 class AnsiRegion(object):
@@ -44,8 +35,8 @@ class AnsiRegion(object):
         begin = min(a, b)
         end = max(a, b)
         for n, (a, b) in enumerate(self.regions):
-            a = subtract_region(a, begin, end)
-            b = subtract_region(b, begin, end)
+            a = self.subtract_region(a, begin, end)
+            b = self.subtract_region(b, begin, end)
             self.regions[n] = (a, b)
 
     def shift(self, val):
@@ -54,6 +45,15 @@ class AnsiRegion(object):
 
     def jsonable(self):
         return {self.scope: self.regions}
+
+    @staticmethod
+    def subtract_region(p, begin, end):
+        if p < begin:
+            return p
+        elif p < end:
+            return begin
+        else:
+            return p - (end - begin)
 
 
 class AnsiCommand(sublime_plugin.TextCommand):
@@ -67,18 +67,22 @@ class AnsiCommand(sublime_plugin.TextCommand):
         v.settings().set("draw_white_space", "none")
 
         if regions is None:
-            self.colorize_existing_data(edit)
+            self._colorize_ansi_codes(edit)
         else:
-            for scope, regions_points in regions.items():
-                regions = []
-                for a, b in regions_points:
-                    regions.append(sublime.Region(a, b))
-                sum_regions = v.get_regions(scope) + regions
-                v.add_regions(scope, sum_regions, scope, '', sublime.DRAW_NO_OUTLINE)
+            self._colorize_regions(regions)
 
         v.set_read_only(True)
 
-    def colorize_existing_data(self, edit):
+    def _colorize_regions(self, regions):
+        v = self.view
+        for scope, regions_points in regions.items():
+            regions = []
+            for a, b in regions_points:
+                regions.append(sublime.Region(a, b))
+            sum_regions = v.get_regions(scope) + regions
+            v.add_regions(scope, sum_regions, scope, '', sublime.DRAW_NO_OUTLINE)
+
+    def _colorize_ansi_codes(self, edit):
         v = self.view
         # removing unsupported ansi escape codes before going forward: 2m 4m 5m 7m 8m
         ansi_unsupported_codes = v.find_all(r'(\x1b\[(0;)?(2|4|5|7|8)m)')
@@ -86,7 +90,7 @@ class AnsiCommand(sublime_plugin.TextCommand):
         for r in ansi_unsupported_codes:
             v.replace(edit, r, "\x1b[1m")
 
-        for ansi in ansi_point_generator():
+        for ansi in ansi_definitions():
             ansi_regions = v.find_all(ansi.regex)
             if DEBUG and ansi_regions:
                 print("scope: {}\nregex: {}\nregions: {}\n----------\n".format(ansi.scope, ansi.regex, ansi_regions))
@@ -149,12 +153,13 @@ class AnsiColorBuildCommand(Default.exec.ExecCommand):
         print("updating ANSI build settings...")
         settings = sublime.load_settings("ansi.sublime-settings")
         val = settings.get("ANSI_process_trigger", "on_finish")
-        if val in ["on_finish", "on_data", "pre_data"]:
+        if val in ["on_finish", "on_data"]:
             cls.process_trigger = val
         else:
-            print("ANSIescape settings warning: not valid ANSI_process_trigger value")
+            print("ANSIescape settings warning: not valid ANSI_process_trigger value. \
+                Valid values: 'on_finish' or 'on_data")
 
-    def pre_data_process(self, proc, data):
+    def on_data_process(self, proc, data):
         view = self.output_view
         if not view.settings().get("syntax") == "Packages/ANSIescape/ANSI.tmLanguage":
             super(AnsiColorBuildCommand, self).on_data(proc, data)
@@ -168,7 +173,7 @@ class AnsiColorBuildCommand(Default.exec.ExecCommand):
 
         # find all regions
         ansi_regions = []
-        for ansi in ansi_point_generator():
+        for ansi in ansi_definitions():
             if re.search(ansi.regex, str_data):
                 reg = re.finditer(ansi.regex, str_data)
                 new_region = AnsiRegion(ansi.scope)
@@ -202,24 +207,19 @@ class AnsiColorBuildCommand(Default.exec.ExecCommand):
         self.output_view.set_read_only(False)
         view.run_command('ansi', args={"regions": json_ansi_regions})
 
-    def process_ansi(self):
-        view = self.output_view
-        if view.settings().get("syntax") == "Packages/ANSIescape/ANSI.tmLanguage":
-            view.settings().set("ansi_enabled", False)
-            view.run_command('ansi')
-
     def on_data(self, proc, data):
-        if self.process_trigger == "pre_data":
-            self.pre_data_process(proc, data)
+        if self.process_trigger == "on_data":
+            self.on_data_process(proc, data)
         else:
             super(AnsiColorBuildCommand, self).on_data(proc, data)
-            if self.process_trigger == "on_data":
-                self.process_ansi()
 
     def on_finished(self, proc):
         super(AnsiColorBuildCommand, self).on_finished(proc)
         if self.process_trigger == "on_finish":
-            self.process_ansi()
+            view = self.output_view
+            if view.settings().get("syntax") == "Packages/ANSIescape/ANSI.tmLanguage":
+                view.settings().set("ansi_enabled", False)
+                view.run_command('ansi')
 
 
 CS_TEMPLATE = """<?xml version="1.0" encoding="UTF-8"?>
