@@ -12,11 +12,25 @@ AnsiDefinition = namedtuple("AnsiDefinition", "scope regex")
 DEBUG = False
 
 
-def ansi_definitions():
+def ansi_definitions(content):
+
+    # collect colors from file content and make them a string
+    color_str = "{0}{1}{0}".format(
+        '\x1b',
+        '\x1b'.join(set(re.findall(
+            r'(\[[\d;]*m)',  # find all possible colors
+            content
+        )))
+    )
+
     settings = sublime.load_settings("ansi.sublime-settings")
-    for bg in settings.get("ANSI_BG", []):
-        for fg in settings.get("ANSI_FG", []):
-            regex = r'({0}{1}(?!\x1b))(.+?)(?=\x1b)|({1}{0}(?!\x1b))(.+?)(?=\x1b)'.format(fg['code'], bg['code'])
+    # filter out unnecessary colors in user settings
+    bgs = [v for v in settings.get("ANSI_BG", []) if re.search(v['code'], color_str) is not None]
+    fgs = [v for v in settings.get("ANSI_FG", []) if re.search(v['code'], color_str) is not None]
+
+    for bg in bgs:
+        for fg in fgs:
+            regex = r'(?:(?:{0}{1})|(?:{1}{0}))[^\x1b]*'.format(fg['code'], bg['code'])
             scope = "{0}{1}".format(fg['scope'], bg['scope'])
             yield AnsiDefinition(scope, regex)
 
@@ -98,7 +112,8 @@ class AnsiCommand(sublime_plugin.TextCommand):
         for r in ansi_unsupported_codes:
             v.replace(edit, r, "\x1b[1m")
 
-        for ansi in ansi_definitions():
+        content = v.substr(sublime.Region(0, v.size()))
+        for ansi in ansi_definitions(content):
             ansi_regions = v.find_all(ansi.regex)
             if DEBUG and ansi_regions:
                 print("scope: {}\nregex: {}\nregions: {}\n----------\n".format(ansi.scope, ansi.regex, ansi_regions))
@@ -180,7 +195,7 @@ class AnsiColorBuildCommand(Default.exec.ExecCommand):
 
         # find all regions
         ansi_regions = []
-        for ansi in ansi_definitions():
+        for ansi in ansi_definitions(str_data):
             if re.search(ansi.regex, str_data):
                 reg = re.finditer(ansi.regex, str_data)
                 new_region = AnsiRegion(ansi.scope)
