@@ -17,3 +17,14 @@
 1;36m  [1;36m  Color  [0m [1;36m[40m  Color  [0m [1;36m[41m  Color  [0m [1;36m[42m  Color  [0m [1;36m[43m  Color  [0m [1;36m[44m  Color  [0m [1;37m[45m  Color  [0m [1;36m[46m  Color  [0m [1;36m[47m  Color  [0m
   37m  [37m  Color  [0m [37m[40m  Color  [0m [37m[41m  Color  [0m [37m[42m  Color  [0m [37m[43m  Color  [0m [37m[44m  Color  [0m [37m[45m  Color  [0m [37m[46m  Color  [0m [37m[47m  Color  [0m
 1;37m  [1;37m  Color  [0m [1;37m[40m  Color  [0m [1;37m[41m  Color  [0m [1;37m[42m  Color  [0m [1;37m[43m  Color  [0m [1;37m[44m  Color  [0m [1;37m[45m  Color  [0m [1;37m[46m  Color  [0m [1;37m[47m  Color  [0m
+
+Unsupported ANSI escape codes:
+
+[2m ansi code 2 (faint) [0m
+[3m ansi code 3 (italic) [0m
+[4m ansi code 4 (underscore) [0m
+[5m ansi code 5 (slow blink) [0m
+[6m ansi code 6 (fast blink) [0m
+[7m ansi code 7 (reverse/negative) [0m
+[8m ansi code 8 (conceal/hidden) [0m
+[9m ansi code 9 (strikethrough) [0m
