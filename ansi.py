@@ -121,7 +121,7 @@ class AnsiCommand(sublime_plugin.TextCommand):
                 sum_regions = v.get_regions(ansi.scope) + ansi_regions
                 v.add_regions(ansi.scope, sum_regions, ansi.scope, '', sublime.DRAW_NO_OUTLINE)
 
-        # removing the rest of  ansi escape codes
+        # removing the rest of ansi escape codes
         ansi_codes = v.find_all(r'(\x1b\[[\d;]*m){1,}')
         ansi_codes.reverse()
         for r in ansi_codes:
@@ -146,6 +146,7 @@ class UndoAnsiCommand(sublime_plugin.WindowCommand):
         view.settings().erase("ansi_scratch")
         view.set_read_only(view.settings().get("ansi_read_only", False))
         view.settings().erase("ansi_read_only")
+
 
 class AnsiEventListener(sublime_plugin.EventListener):
 
