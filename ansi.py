@@ -172,6 +172,7 @@ class AnsiEventListener(sublime_plugin.EventListener):
         self.assign_event_listener(view)
 
     def assign_event_listener(self, view):
+        view.settings().clear_on_change("CHECK_FOR_ansi_syntax")
         view.settings().add_on_change("CHECK_FOR_ANSI_SYNTAX", lambda: self.detect_syntax_change(view))
         if view.settings().get("syntax") == "Packages/ANSIescape/ANSI.tmLanguage":
             view.run_command("ansi")
