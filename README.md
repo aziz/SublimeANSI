@@ -9,7 +9,7 @@ This plugin solves this annoying problem. Not by just removing the ANSI escape c
 ## Installation
 
 You can install via [Sublime Package Control](http://wbond.net/sublime_packages/package_control)  
-Or you can clone this repo into your SublimeText Packages directory and rename it to `ANSI`
+Or you can clone this repository into your SublimeText Packages directory and rename it to `ANSI`
 
 ## Usage
 
@@ -76,5 +76,5 @@ Create a file named `ansi.sublime-settings` in your user directory, copy the con
 - Does not support dim, underscore, blink, reverse and hidden text attributes, which is fine since they are not supported by many terminals as well and their usage are pretty rare. 
 
 ### License
-Copyright 2014-2015 [Allen Bargi](https://twitter.com/aziz). Licensed under the MIT License
+Copyright 2014-2016 [Allen Bargi](https://twitter.com/aziz). Licensed under the MIT License
 

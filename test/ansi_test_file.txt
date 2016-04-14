@@ -27,4 +27,4 @@ Unsupported ANSI escape codes:
 [6m ansi code 6 (fast blink) [0m
 [7m ansi code 7 (reverse/negative) [0m
 [8m ansi code 8 (conceal/hidden) [0m
-[9m ansi code 9 (strikethrough) [0m
+[9m ansi code 9 (strike-through) [0m

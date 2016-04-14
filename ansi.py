@@ -73,59 +73,59 @@ class AnsiRegion(object):
 class AnsiCommand(sublime_plugin.TextCommand):
 
     def run(self, edit, regions=None):
-        v = self.view
-        if v.settings().get("ansi_enabled"):
+        view = self.view
+        if view.settings().get("ansi_enabled"):
             return
-        v.settings().set("ansi_enabled", True)
-        v.settings().set("color_scheme", "Packages/User/ANSIescape/ansi.tmTheme")
-        v.settings().set("draw_white_space", "none")
+        view.settings().set("ansi_enabled", True)
+        view.settings().set("color_scheme", "Packages/User/ANSIescape/ansi.tmTheme")
+        view.settings().set("draw_white_space", "none")
 
-        if not v.settings().has("ansi_scratch"):
-            v.settings().set("ansi_scratch", v.is_scratch())
-        v.set_scratch(True)
+        if not view.settings().has("ansi_scratch"):
+            view.settings().set("ansi_scratch", view.is_scratch())
+        view.set_scratch(True)
 
-        if not v.settings().has("ansi_read_only"):
-            v.settings().set("ansi_read_only", v.is_read_only())
-        v.set_read_only(False)
+        if not view.settings().has("ansi_read_only"):
+            view.settings().set("ansi_read_only", view.is_read_only())
+        view.set_read_only(False)
 
         if regions is None:
             self._colorize_ansi_codes(edit)
         else:
             self._colorize_regions(regions)
 
-        v.set_read_only(True)
+        view.set_read_only(True)
 
     def _colorize_regions(self, regions):
-        v = self.view
+        view = self.view
         for scope, regions_points in regions.items():
             regions = []
             for a, b in regions_points:
                 regions.append(sublime.Region(a, b))
-            sum_regions = v.get_regions(scope) + regions
-            v.add_regions(scope, sum_regions, scope, '', sublime.DRAW_NO_OUTLINE)
+            sum_regions = view.get_regions(scope) + regions
+            view.add_regions(scope, sum_regions, scope, '', sublime.DRAW_NO_OUTLINE)
 
     def _colorize_ansi_codes(self, edit):
-        v = self.view
+        view = self.view
         # removing unsupported ansi escape codes before going forward: 2m 4m 5m 7m 8m
-        ansi_unsupported_codes = v.find_all(r'(\x1b\[(0;)?(2|4|5|7|8)m)')
+        ansi_unsupported_codes = view.find_all(r'(\x1b\[(0;)?(2|4|5|7|8)m)')
         ansi_unsupported_codes.reverse()
         for r in ansi_unsupported_codes:
-            v.replace(edit, r, "\x1b[1m")
+            view.replace(edit, r, "\x1b[1m")
 
-        content = v.substr(sublime.Region(0, v.size()))
+        content = view.substr(sublime.Region(0, view.size()))
         for ansi in ansi_definitions(content):
-            ansi_regions = v.find_all(ansi.regex)
+            ansi_regions = view.find_all(ansi.regex)
             if DEBUG and ansi_regions:
                 print("scope: {}\nregex: {}\nregions: {}\n----------\n".format(ansi.scope, ansi.regex, ansi_regions))
             if ansi_regions:
-                sum_regions = v.get_regions(ansi.scope) + ansi_regions
-                v.add_regions(ansi.scope, sum_regions, ansi.scope, '', sublime.DRAW_NO_OUTLINE)
+                sum_regions = view.get_regions(ansi.scope) + ansi_regions
+                view.add_regions(ansi.scope, sum_regions, ansi.scope, '', sublime.DRAW_NO_OUTLINE)
 
         # removing the rest of ansi escape codes
-        ansi_codes = v.find_all(r'(\x1b\[[\d;]*m){1,}')
+        ansi_codes = view.find_all(r'(\x1b\[[\d;]*m){1,}')
         ansi_codes.reverse()
         for r in ansi_codes:
-            v.erase(edit, r)
+            view.erase(edit, r)
 
 
 class UndoAnsiCommand(sublime_plugin.WindowCommand):
@@ -151,12 +151,12 @@ class UndoAnsiCommand(sublime_plugin.WindowCommand):
 class AnsiEventListener(sublime_plugin.EventListener):
 
     def on_new_async(self, view):
-        self.assign_event_listner(view)
+        self.assign_event_listener(view)
 
     def on_load_async(self, view):
-        self.assign_event_listner(view)
+        self.assign_event_listener(view)
 
-    def assign_event_listner(self, view):
+    def assign_event_listener(self, view):
         view.settings().add_on_change("CHECK_FOR_ANSI_SYNTAX", lambda: self.detect_syntax_change(view))
         if view.settings().get("syntax") == "Packages/ANSIescape/ANSI.tmLanguage":
             view.run_command("ansi")
@@ -215,14 +215,14 @@ class AnsiColorBuildCommand(Default.exec.ExecCommand):
                 r.cut_area(*to_remove)
         out_data = re.sub(remove_pattern, "", str_data)
 
-        # create json serialable region repressentation
+        # create json serialable region representation
         json_ansi_regions = {}
         shift_val = view.size()
         for region in ansi_regions:
             region.shift(shift_val)
             json_ansi_regions.update(region.jsonable())
 
-        # send on_data witout ansi codes
+        # send on_data without ansi codes
         super(AnsiColorBuildCommand, self).on_data(proc, out_data.encode(self.encoding))
 
         # send ansi command
@@ -294,7 +294,7 @@ def plugin_loaded():
     settings.add_on_change("ANSI_SETTINGS_CHANGE", lambda: AnsiColorBuildCommand.update_build_settings())
     for window in sublime.windows():
         for view in window.views():
-            AnsiEventListener().assign_event_listner(view)
+            AnsiEventListener().assign_event_listener(view)
 
 
 def plugin_unloaded():
