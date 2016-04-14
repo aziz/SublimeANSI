@@ -16,12 +16,22 @@ DEBUG = False
 def debug(view, msg):
     if DEBUG:
         info = inspect.getframeinfo(inspect.stack()[1][0])
-        file = os.path.basename(info.filename)
+        filepath = os.path.abspath(info.filename)
         if view.name():
             name = view.name()
         elif view.file_name():
             name = os.path.basename(view.file_name())
-        print("%s:%04d :: window-%s/view-%s %-32s :: "" %s" % (file, info.lineno, view.window().id(), view.id(), "[" + name + "]", msg))
+        else:
+            name = "not named"
+        msg = re.sub(r'\n', "\n\t", msg)
+        print("File: \"{0}\", line {1}, window: {2}, view: {3}, file: {4}\n\t{5}".format(
+            filepath,               # 0
+            info.lineno,            # 1
+            view.window().id(),     # 2
+            view.id(),              # 3
+            name,                   # 4
+            msg                     # 5
+        ))
 
 
 def ansi_definitions(content):
