@@ -76,14 +76,20 @@ class AnsiCommand(sublime_plugin.TextCommand):
         view = self.view
         if view.settings().get("ansi_enabled"):
             return
+
+        # if the syntax has not already been changed to ansi this means the command has
+        # been run via the sublime console therefore the syntax must be changed manually
+        if view.settings().get("syntax") != "Packages/ANSIescape/ANSI.tmLanguage":
+            view.settings().set("syntax", "Packages/ANSIescape/ANSI.tmLanguage")
+
         view.settings().set("ansi_enabled", True)
         view.settings().set("color_scheme", "Packages/User/ANSIescape/ansi.tmTheme")
         view.settings().set("draw_white_space", "none")
 
+        # save the view's original scratch and read only settings
         if not view.settings().has("ansi_scratch"):
             view.settings().set("ansi_scratch", view.is_scratch())
         view.set_scratch(True)
-
         if not view.settings().has("ansi_read_only"):
             view.settings().set("ansi_read_only", view.is_read_only())
         view.set_read_only(False)
@@ -132,16 +138,25 @@ class UndoAnsiCommand(sublime_plugin.WindowCommand):
 
     def run(self):
         view = self.window.active_view()
+
+        # if the syntax has not already been changed from ansi this means the command has
+        # been run via the sublime console therefore the syntax must be changed manually
+        if view.settings().get("syntax") == "Packages/ANSIescape/ANSI.tmLanguage":
+            view.settings().set("syntax", "Packages/Text/Plain text.tmLanguage")
+
         view.settings().erase("ansi_enabled")
         view.settings().erase("color_scheme")
         view.settings().erase("draw_white_space")
+
         view.set_read_only(False)
         settings = sublime.load_settings("ansi.sublime-settings")
         for bg in settings.get("ANSI_BG", []):
             for fg in settings.get("ANSI_FG", []):
                 ansi_scope = "{0}{1}".format(fg['scope'], bg['scope'])
                 view.erase_regions(ansi_scope)
-        self.window.run_command("undo")
+        view.run_command("undo")
+
+        # restore the view's original scratch and read only settings
         view.set_scratch(view.settings().get("ansi_scratch", False))
         view.settings().erase("ansi_scratch")
         view.set_read_only(view.settings().get("ansi_read_only", False))
