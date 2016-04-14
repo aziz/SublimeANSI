@@ -2,6 +2,7 @@
 
 import sublime
 import sublime_plugin
+import inspect
 import os
 import Default
 import re
@@ -10,6 +11,17 @@ from collections import namedtuple
 AnsiDefinition = namedtuple("AnsiDefinition", "scope regex")
 
 DEBUG = False
+
+
+def debug(view, msg):
+    if DEBUG:
+        info = inspect.getframeinfo(inspect.stack()[1][0])
+        file = os.path.basename(info.filename)
+        if view.name():
+            name = view.name()
+        elif view.file_name():
+            name = os.path.basename(view.file_name())
+        print("%s:%04d :: window-%s/view-%s %-32s :: "" %s" % (file, info.lineno, view.window().id(), view.id(), "[" + name + "]", msg))
 
 
 def ansi_definitions(content):
@@ -75,6 +87,7 @@ class AnsiCommand(sublime_plugin.TextCommand):
     def run(self, edit, regions=None):
         view = self.view
         if view.settings().get("ansi_enabled"):
+            debug(view, "oops ... the ansi command has already been executed")
             return
 
         # if the syntax has not already been changed to ansi this means the command has
@@ -121,8 +134,7 @@ class AnsiCommand(sublime_plugin.TextCommand):
         content = view.substr(sublime.Region(0, view.size()))
         for ansi in ansi_definitions(content):
             ansi_regions = view.find_all(ansi.regex)
-            if DEBUG and ansi_regions:
-                print("scope: {}\nregex: {}\nregions: {}\n----------\n".format(ansi.scope, ansi.regex, ansi_regions))
+            debug(view, "scope: {}\nregex: {}\nregions: {}\n----------\n".format(ansi.scope, ansi.regex, ansi_regions))
             if ansi_regions:
                 sum_regions = view.get_regions(ansi.scope) + ansi_regions
                 view.add_regions(ansi.scope, sum_regions, ansi.scope, '', sublime.DRAW_NO_OUTLINE)
@@ -138,6 +150,9 @@ class UndoAnsiCommand(sublime_plugin.WindowCommand):
 
     def run(self):
         view = self.window.active_view()
+        if not view.settings().get("ansi_enabled"):
+            debug(view, "oops ... the undo command has already been executed")
+            return
 
         # if the syntax has not already been changed from ansi this means the command has
         # been run via the sublime console therefore the syntax must be changed manually
@@ -174,17 +189,18 @@ class AnsiEventListener(sublime_plugin.EventListener):
     def assign_event_listener(self, view):
         view.settings().clear_on_change("CHECK_FOR_ansi_syntax")
         view.settings().add_on_change("CHECK_FOR_ANSI_SYNTAX", lambda: self.detect_syntax_change(view))
+        debug(view, "Syntax change event listener assigned to view.")
         if view.settings().get("syntax") == "Packages/ANSIescape/ANSI.tmLanguage":
             view.run_command("ansi")
 
     def detect_syntax_change(self, view):
         if view.settings().get("syntax") == "Packages/ANSIescape/ANSI.tmLanguage":
-            if not view.settings().has("ansi_enabled"): 
-                #print("Syntax change detected (running ansi command).")
+            if not view.settings().has("ansi_enabled"):
+                debug(view, "Syntax change detected (running ansi command).")
                 view.run_command("ansi")
         else:
             if view.settings().has("ansi_enabled"):
-                #print("Syntax change detected (running undo command).")
+                debug(view, "Syntax change detected (running undo command).")
                 view.window().run_command("undo_ansi")
 
 
