@@ -179,9 +179,13 @@ class AnsiEventListener(sublime_plugin.EventListener):
 
     def detect_syntax_change(self, view):
         if view.settings().get("syntax") == "Packages/ANSIescape/ANSI.tmLanguage":
-            view.run_command("ansi")
-        elif view.settings().get("ansi_enabled"):
-            view.window().run_command("undo_ansi")
+            if not view.settings().has("ansi_enabled"): 
+                #print("Syntax change detected (running ansi command).")
+                view.run_command("ansi")
+        else:
+            if view.settings().has("ansi_enabled"):
+                #print("Syntax change detected (running undo command).")
+                view.window().run_command("undo_ansi")
 
 
 class AnsiColorBuildCommand(Default.exec.ExecCommand):
