@@ -7,6 +7,7 @@ import os
 import Default
 import re
 from collections import namedtuple
+from functools import partial
 
 AnsiDefinition = namedtuple("AnsiDefinition", "scope regex")
 
@@ -34,21 +35,25 @@ def debug(view, msg):
         ))
 
 
-def ansi_definitions(content):
-
-    # collect colors from file content and make them a string
-    color_str = "{0}{1}{0}".format(
-        '\x1b',
-        '\x1b'.join(set(re.findall(
-            r'(\[[\d;]*m)',  # find all possible colors
-            content
-        )))
-    )
+def ansi_definitions(content=None):
 
     settings = sublime.load_settings("ansi.sublime-settings")
-    # filter out unnecessary colors in user settings
-    bgs = [v for v in settings.get("ANSI_BG", []) if re.search(v['code'], color_str) is not None]
-    fgs = [v for v in settings.get("ANSI_FG", []) if re.search(v['code'], color_str) is not None]
+    if content is not None:
+        # collect colors from file content and make them a string
+        color_str = "{0}{1}{0}".format(
+            '\x1b',
+            '\x1b'.join(set(re.findall(
+                r'(\[[\d;]*m)',  # find all possible colors
+                content
+            )))
+        )
+
+        # filter out unnecessary colors in user settings
+        bgs = [v for v in settings.get("ANSI_BG", []) if re.search(v['code'], color_str) is not None]
+        fgs = [v for v in settings.get("ANSI_FG", []) if re.search(v['code'], color_str) is not None]
+    else:
+        bgs = [v for v in settings.get("ANSI_BG", [])]
+        fgs = [v for v in settings.get("ANSI_FG", [])]
 
     for bg in bgs:
         for fg in fgs:
@@ -94,7 +99,7 @@ class AnsiRegion(object):
 
 class AnsiCommand(sublime_plugin.TextCommand):
 
-    def run(self, edit, regions=None):
+    def run(self, edit, regions=None, clear_before=False):
         view = self.view
         if view.settings().get("ansi_enabled"):
             debug(view, "oops ... the ansi command has already been executed")
@@ -116,6 +121,9 @@ class AnsiCommand(sublime_plugin.TextCommand):
         if not view.settings().has("ansi_read_only"):
             view.settings().set("ansi_read_only", view.is_read_only())
         view.set_read_only(False)
+
+        if clear_before:
+            self._remove_ansi_regions()
 
         if regions is None:
             self._colorize_ansi_codes(edit)
@@ -155,6 +163,11 @@ class AnsiCommand(sublime_plugin.TextCommand):
         for r in ansi_codes:
             view.erase(edit, r)
 
+    def _remove_ansi_regions(self):
+        view = self.view
+        for ansi in ansi_definitions():
+            view.erase_regions(ansi.scope)
+
 
 class UndoAnsiCommand(sublime_plugin.WindowCommand):
 
@@ -190,11 +203,38 @@ class UndoAnsiCommand(sublime_plugin.WindowCommand):
 
 class AnsiEventListener(sublime_plugin.EventListener):
 
+    file_reload_delay = -1
+    file_reload_times = {
+        "off": -1,
+        "fast": 50,
+        "normal": 200,
+        "slow": 1000
+    }
+
+    @classmethod
+    def update_reload_settings(cls):
+        print("updating ANSI checking for reload settings...")
+        settings = sublime.load_settings("ansi.sublime-settings")
+        val = settings.get("check_file_reload", "off")
+        if val in cls.file_reload_times:
+            cls.file_reload_delay = cls.file_reload_times[val]
+        else:
+            print('ANSIescape settings warning: not valid check_file_reload value.\n\tPossible values: {}'.format(list(cls.file_reload_times.keys())))
+
     def on_new_async(self, view):
         self.assign_event_listener(view)
 
     def on_load_async(self, view):
         self.assign_event_listener(view)
+
+    def check_reload(self, view):
+        if view.settings().has("ansi_enabled"):
+            if self.file_reload_delay > 0:
+                if view.find(r'(\x1b\[[\d;]*m){1,}', 0):
+                    view.settings().set("ansi_enabled", False)
+                    view.run_command("ansi", args={"clear_before": True})
+                    debug(view, "reloading ANSI codes")
+                sublime.set_timeout_async(partial(self.check_reload, view), self.file_reload_delay)
 
     def assign_event_listener(self, view):
         view.settings().clear_on_change("CHECK_FOR_ANSI_SYNTAX")
@@ -208,6 +248,8 @@ class AnsiEventListener(sublime_plugin.EventListener):
             if not view.settings().has("ansi_enabled"):
                 debug(view, "Syntax change detected (running ansi command).")
                 view.run_command("ansi")
+            if self.file_reload_delay > 0:
+                sublime.set_timeout_async(partial(self.check_reload, view), self.file_reload_delay)
         else:
             if view.settings().has("ansi_enabled"):
                 debug(view, "Syntax change detected (running undo command).")
@@ -336,8 +378,10 @@ def plugin_loaded():
         generate_color_scheme(cs_file)
     settings = sublime.load_settings("ansi.sublime-settings")
     AnsiColorBuildCommand.update_build_settings()
+    AnsiEventListener.update_reload_settings()
     settings.add_on_change("ANSI_COLORS_CHANGE", lambda: generate_color_scheme(cs_file))
-    settings.add_on_change("ANSI_SETTINGS_CHANGE", lambda: AnsiColorBuildCommand.update_build_settings())
+    settings.add_on_change("ANSI_TRIGGER_CHANGE", lambda: AnsiColorBuildCommand.update_build_settings())
+    settings.add_on_change("ANSI_RELOAD_CHANGE", lambda: AnsiEventListener.update_reload_settings())
     for window in sublime.windows():
         for view in window.views():
             AnsiEventListener().assign_event_listener(view)
@@ -346,4 +390,5 @@ def plugin_loaded():
 def plugin_unloaded():
     settings = sublime.load_settings("ansi.sublime-settings")
     settings.clear_on_change("ANSI_COLORS_CHANGE")
-    settings.clear_on_change("ANSI_SETTINGS_CHANGE")
+    settings.clear_on_change("ANSI_TRIGGER_CHANGE")
+    settings.clear_on_change("ANSI_RELOAD_CHANGE")

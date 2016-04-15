@@ -45,4 +45,12 @@
   // - on_finish - after whole build process (default)
   // - on_data - when new data is posted to exec output
   "ANSI_process_trigger": "on_finish",
+
+  // controls if we are checking if file has been reloaded by sublime
+  // possible values:
+  // - off
+  // - fast - every 50ms
+  // - normal - every 200ms
+  // - slow - every 1000ms
+  "check_file_reload": "off",
 }
