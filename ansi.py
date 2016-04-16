@@ -227,6 +227,9 @@ class AnsiEventListener(sublime_plugin.EventListener):
     def on_load_async(self, view):
         self.assign_event_listener(view)
 
+    def on_close(view):
+        view.settings().clear_on_change("CHECK_FOR_ANSI_SYNTAX")
+
     def check_reload(self, view):
         if view.settings().has("ansi_enabled"):
             if self.file_reload_delay > 0:
