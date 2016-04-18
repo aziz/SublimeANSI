@@ -247,6 +247,9 @@ class AnsiEventListener(sublime_plugin.EventListener):
             view.run_command("ansi")
 
     def detect_syntax_change(self, view):
+        if view.window is None:
+            view.settings().clear_on_change("CHECK_FOR_ANSI_SYNTAX")
+            return
         if view.settings().get("syntax") == "Packages/ANSIescape/ANSI.tmLanguage":
             if not view.settings().has("ansi_enabled"):
                 debug(view, "Syntax change detected (running ansi command).")
