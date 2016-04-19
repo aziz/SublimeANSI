@@ -101,9 +101,10 @@ class AnsiCommand(sublime_plugin.TextCommand):
 
     def run(self, edit, regions=None, clear_before=False):
         view = self.view
-        if view.settings().get("ansi_enabled"):
-            debug(view, "oops ... the ansi command has already been executed")
+        if view.settings().get("ansi_in_progres", False):
+            debug(view, "oops ... the ansi command is already in progress")
             return
+        view.settings().set("ansi_in_progres", True)
 
         # if the syntax has not already been changed to ansi this means the command has
         # been run via the sublime console therefore the syntax must be changed manually
@@ -130,6 +131,7 @@ class AnsiCommand(sublime_plugin.TextCommand):
         else:
             self._colorize_regions(regions)
 
+        view.settings().set("ansi_in_progres", False)
         view.set_read_only(True)
 
     def _colorize_regions(self, regions):
@@ -173,9 +175,12 @@ class UndoAnsiCommand(sublime_plugin.WindowCommand):
 
     def run(self):
         view = self.window.active_view()
-        if not view.settings().get("ansi_enabled"):
-            debug(view, "oops ... the undo command has already been executed")
+        # if ansi is in progress or don't have ansi_in_progress setting
+        # don't run the command
+        if view.settings().get("ansi_in_progres", True):
+            debug(view, "oops ... the ansi command is already executing")
             return
+        view.settings().set("ansi_in_progres", True)
 
         # if the syntax has not already been changed from ansi this means the command has
         # been run via the sublime console therefore the syntax must be changed manually
@@ -199,6 +204,7 @@ class UndoAnsiCommand(sublime_plugin.WindowCommand):
         view.settings().erase("ansi_scratch")
         view.set_read_only(view.settings().get("ansi_read_only", False))
         view.settings().erase("ansi_read_only")
+        view.settings().erase("ansi_in_progres")
 
 
 class AnsiEventListener(sublime_plugin.EventListener):
@@ -249,6 +255,8 @@ class AnsiEventListener(sublime_plugin.EventListener):
     def detect_syntax_change(self, view):
         if view.window is None:
             view.settings().clear_on_change("CHECK_FOR_ANSI_SYNTAX")
+            return
+        if view.settings().get("ansi_in_progres", False):
             return
         if view.settings().get("syntax") == "Packages/ANSIescape/ANSI.tmLanguage":
             if not view.settings().has("ansi_enabled"):
@@ -320,7 +328,6 @@ class AnsiColorBuildCommand(Default.exec.ExecCommand):
         super(AnsiColorBuildCommand, self).on_data(proc, out_data.encode(self.encoding))
 
         # send ansi command
-        view.settings().set("ansi_enabled", False)
         view.run_command('ansi', args={"regions": json_ansi_regions})
 
     def on_data(self, proc, data):
@@ -334,8 +341,7 @@ class AnsiColorBuildCommand(Default.exec.ExecCommand):
         if self.process_trigger == "on_finish":
             view = self.output_view
             if view.settings().get("syntax") == "Packages/ANSIescape/ANSI.tmLanguage":
-                view.settings().set("ansi_enabled", False)
-                view.run_command('ansi')
+                view.run_command("ansi", args={"clear_before": True})
 
 
 CS_TEMPLATE = """<?xml version="1.0" encoding="UTF-8"?>
