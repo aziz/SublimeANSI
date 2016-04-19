@@ -234,23 +234,33 @@ class AnsiEventListener(sublime_plugin.EventListener):
         self.assign_event_listener(view)
 
     def on_pre_close(self, view):
-        view.settings().clear_on_change("CHECK_FOR_ANSI_SYNTAX")
-
-    def check_reload(self, view):
-        if view.settings().has("ansi_enabled"):
-            if self.file_reload_delay > 0:
-                if view.find(r'(\x1b\[[\d;]*m){1,}', 0):
-                    view.settings().set("ansi_enabled", False)
-                    view.run_command("ansi", args={"clear_before": True})
-                    debug(view, "reloading ANSI codes")
-                sublime.set_timeout_async(partial(self.check_reload, view), self.file_reload_delay)
+        self._clear_view_listeners(view)
 
     def assign_event_listener(self, view):
         self._clear_view_listeners(view)
         view.settings().add_on_change("CHECK_FOR_ANSI_SYNTAX", lambda: self.detect_syntax_change(view))
+        view.settings().add_on_change("CHECK_FOR_LEFT_ANSI", lambda: self.detect_left_ansi(view))
         debug(view, "Syntax change event listener assigned to view.")
         if view.settings().get("syntax") == "Packages/ANSIescape/ANSI.tmLanguage":
             view.run_command("ansi")
+
+    def detect_left_ansi(self, view):
+        sublime.set_timeout_async(partial(self.check_left_ansi, view), 50)
+
+    def check_left_ansi(self, view):
+        if view.window is None:
+            self._clear_view_listeners(view)
+            return
+        if view.settings().get("syntax") != "Packages/ANSIescape/ANSI.tmLanguage":
+            return
+        if view.settings().get("ansi_in_progres", False):
+            debug(view, "ansi in progres")
+            sublime.set_timeout_async(partial(self.check_left_ansi, view), 50)
+            return
+        if view.find(r'(\x1b\[[\d;]*m){1,}', 0):
+            debug(view, "Left ANSI codes detected. Running ansi command")
+            view.run_command("ansi", args={"clear_before": True})
+        debug(view, "ANSI cmd done and no codes left")
 
     def detect_syntax_change(self, view):
         if view.window is None:
@@ -261,9 +271,7 @@ class AnsiEventListener(sublime_plugin.EventListener):
         if view.settings().get("syntax") == "Packages/ANSIescape/ANSI.tmLanguage":
             if not view.settings().has("ansi_enabled"):
                 debug(view, "Syntax change detected (running ansi command).")
-                view.run_command("ansi")
-            if self.file_reload_delay > 0:
-                sublime.set_timeout_async(partial(self.check_reload, view), self.file_reload_delay)
+                view.run_command("ansi", args={"clear_before": True})
         else:
             if view.settings().has("ansi_enabled"):
                 debug(view, "Syntax change detected (running undo command).")
@@ -271,6 +279,8 @@ class AnsiEventListener(sublime_plugin.EventListener):
 
     def _clear_view_listeners(self, view):
         view.settings().clear_on_change("CHECK_FOR_ANSI_SYNTAX")
+        view.settings().clear_on_change("CHECK_FOR_LEFT_ANSI")
+
 
 class AnsiColorBuildCommand(Default.exec.ExecCommand):
 
@@ -392,10 +402,8 @@ def plugin_loaded():
         generate_color_scheme(cs_file)
     settings = sublime.load_settings("ansi.sublime-settings")
     AnsiColorBuildCommand.update_build_settings()
-    AnsiEventListener.update_reload_settings()
     settings.add_on_change("ANSI_COLORS_CHANGE", lambda: generate_color_scheme(cs_file))
     settings.add_on_change("ANSI_TRIGGER_CHANGE", lambda: AnsiColorBuildCommand.update_build_settings())
-    settings.add_on_change("ANSI_RELOAD_CHANGE", lambda: AnsiEventListener.update_reload_settings())
     for window in sublime.windows():
         for view in window.views():
             AnsiEventListener().assign_event_listener(view)
@@ -405,4 +413,3 @@ def plugin_unloaded():
     settings = sublime.load_settings("ansi.sublime-settings")
     settings.clear_on_change("ANSI_COLORS_CHANGE")
     settings.clear_on_change("ANSI_TRIGGER_CHANGE")
-    settings.clear_on_change("ANSI_RELOAD_CHANGE")
