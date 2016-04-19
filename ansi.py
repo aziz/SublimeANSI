@@ -246,7 +246,7 @@ class AnsiEventListener(sublime_plugin.EventListener):
                 sublime.set_timeout_async(partial(self.check_reload, view), self.file_reload_delay)
 
     def assign_event_listener(self, view):
-        view.settings().clear_on_change("CHECK_FOR_ANSI_SYNTAX")
+        self._clear_view_listeners(view)
         view.settings().add_on_change("CHECK_FOR_ANSI_SYNTAX", lambda: self.detect_syntax_change(view))
         debug(view, "Syntax change event listener assigned to view.")
         if view.settings().get("syntax") == "Packages/ANSIescape/ANSI.tmLanguage":
@@ -254,7 +254,7 @@ class AnsiEventListener(sublime_plugin.EventListener):
 
     def detect_syntax_change(self, view):
         if view.window is None:
-            view.settings().clear_on_change("CHECK_FOR_ANSI_SYNTAX")
+            self._clear_view_listeners(view)
             return
         if view.settings().get("ansi_in_progres", False):
             return
@@ -269,6 +269,8 @@ class AnsiEventListener(sublime_plugin.EventListener):
                 debug(view, "Syntax change detected (running undo command).")
                 view.window().run_command("undo_ansi")
 
+    def _clear_view_listeners(self, view):
+        view.settings().clear_on_change("CHECK_FOR_ANSI_SYNTAX")
 
 class AnsiColorBuildCommand(Default.exec.ExecCommand):
 
