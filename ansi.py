@@ -211,24 +211,6 @@ class UndoAnsiCommand(sublime_plugin.WindowCommand):
 
 class AnsiEventListener(sublime_plugin.EventListener):
 
-    file_reload_delay = -1
-    file_reload_times = {
-        "off": -1,
-        "fast": 50,
-        "normal": 200,
-        "slow": 1000
-    }
-
-    @classmethod
-    def update_reload_settings(cls):
-        print("updating ANSI checking for reload settings...")
-        settings = sublime.load_settings("ansi.sublime-settings")
-        val = settings.get("check_file_reload", "off")
-        if val in cls.file_reload_times:
-            cls.file_reload_delay = cls.file_reload_times[val]
-        else:
-            print('ANSIescape settings warning: not valid check_file_reload value.\n\tPossible values: {}'.format(list(cls.file_reload_times.keys())))
-
     def on_new_async(self, view):
         self.process_view_open(view)
 
