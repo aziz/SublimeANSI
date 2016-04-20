@@ -132,6 +132,7 @@ class AnsiCommand(sublime_plugin.TextCommand):
             self._colorize_regions(regions)
 
         view.settings().set("ansi_in_progres", False)
+        view.settings().set("ansi_size", view.size())
         view.set_read_only(True)
 
     def _colorize_regions(self, regions):
@@ -205,6 +206,7 @@ class UndoAnsiCommand(sublime_plugin.WindowCommand):
         view.set_read_only(view.settings().get("ansi_read_only", False))
         view.settings().erase("ansi_read_only")
         view.settings().erase("ansi_in_progres")
+        view.settings().erase("ansi_size")
 
 
 class AnsiEventListener(sublime_plugin.EventListener):
@@ -260,8 +262,8 @@ class AnsiEventListener(sublime_plugin.EventListener):
             debug(view, "ansi in progres")
             sublime.set_timeout_async(partial(self.check_left_ansi, view), 50)
             return
-        if view.find(r'(\x1b\[[\d;]*m){1,}', 0):
-            debug(view, "Left ANSI codes detected. Running ansi command")
+        if view.settings().get("ansi_size", view.size()) != view.size():
+            debug(view, "ANSI view size changed. Running ansi command")
             view.run_command("ansi", args={"clear_before": True})
         debug(view, "ANSI cmd done and no codes left")
 
