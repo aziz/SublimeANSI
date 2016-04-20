@@ -389,10 +389,9 @@ CS_TEMPLATE = """<?xml version="1.0" encoding="UTF-8"?>
 ANSI_SCOPE = "<dict><key>scope</key><string>{0}{1}</string><key>settings</key><dict><key>background</key><string>{2}</string><key>foreground</key><string>{3}</string>{4}</dict></dict>\n"
 
 
-def generate_color_scheme(cs_file):
+def generate_color_scheme(cs_file, settings):
     print("Regenerating ANSI color scheme...")
     cs_scopes = ""
-    settings = sublime.load_settings("ansi.sublime-settings")
     for bg in settings.get("ANSI_BG", []):
         for fg in settings.get("ANSI_FG", []):
             if (bg.get('font_style') and bg['font_style'] == 'bold') or (fg.get('font_style') and fg['font_style'] == 'bold'):
@@ -408,6 +407,8 @@ def generate_color_scheme(cs_file):
 
 
 def plugin_loaded():
+    # load pluggin settings
+    settings = sublime.load_settings("ansi.sublime-settings")
     # create ansi color scheme directory
     ansi_cs_dir = os.path.join(sublime.packages_path(), "User", "ANSIescape")
     if not os.path.exists(ansi_cs_dir):
@@ -415,12 +416,11 @@ def plugin_loaded():
     # create ansi color scheme file
     cs_file = os.path.join(ansi_cs_dir, "ansi.tmTheme")
     if not os.path.isfile(cs_file):
-        generate_color_scheme(cs_file)
+        generate_color_scheme(cs_file, settings)
     # update the settings for the plugin
-    settings = sublime.load_settings("ansi.sublime-settings")
     AnsiColorBuildCommand.update_build_settings(settings)
-    settings.add_on_change("ANSI_COLORS_CHANGE", lambda: generate_color_scheme(cs_file))
-    settings.add_on_change("ANSI_TRIGGER_CHANGE", lambda: AnsiColorBuildCommand.update_build_settings())
+    settings.add_on_change("ANSI_COLORS_CHANGE", lambda: generate_color_scheme(cs_file, settings))
+    settings.add_on_change("ANSI_TRIGGER_CHANGE", lambda: AnsiColorBuildCommand.update_build_settings(settings))
     # update the setting for each view
     for window in sublime.windows():
         for view in window.views():
