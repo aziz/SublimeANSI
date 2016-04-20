@@ -228,28 +228,31 @@ class AnsiEventListener(sublime_plugin.EventListener):
             print('ANSIescape settings warning: not valid check_file_reload value.\n\tPossible values: {}'.format(list(cls.file_reload_times.keys())))
 
     def on_new_async(self, view):
-        self.assign_event_listener(view)
+        self.process_view_open(view)
 
     def on_load_async(self, view):
-        self.assign_event_listener(view)
+        self.process_view_open(view)
 
     def on_pre_close(self, view):
-        self._clear_view_listeners(view)
+        self.process_view_close(view)
 
-    def assign_event_listener(self, view):
-        self._clear_view_listeners(view)
-        view.settings().add_on_change("CHECK_FOR_ANSI_SYNTAX", lambda: self.detect_syntax_change(view))
-        view.settings().add_on_change("CHECK_FOR_LEFT_ANSI", lambda: self.detect_left_ansi(view))
-        debug(view, "Syntax change event listener assigned to view.")
+    def process_view_open(self, view):
+        self._del_event_listeners(view)
+        self._add_event_listeners(view)
         if view.settings().get("syntax") == "Packages/ANSIescape/ANSI.tmLanguage":
             view.run_command("ansi")
+
+    def process_view_close(self, view):
+        self._del_event_listeners(view)
+        #if view.settings().get("syntax") == "Packages/ANSIescape/ANSI.tmLanguage":
+        #    view.window().run_command("undo_ansi") ** this needs to be tested **
 
     def detect_left_ansi(self, view):
         sublime.set_timeout_async(partial(self.check_left_ansi, view), 50)
 
     def check_left_ansi(self, view):
         if view.window is None:
-            self._clear_view_listeners(view)
+            self._del_event_listeners(view)
             return
         if view.settings().get("syntax") != "Packages/ANSIescape/ANSI.tmLanguage":
             return
@@ -264,7 +267,7 @@ class AnsiEventListener(sublime_plugin.EventListener):
 
     def detect_syntax_change(self, view):
         if view.window is None:
-            self._clear_view_listeners(view)
+            self._del_event_listeners(view)
             return
         if view.settings().get("ansi_in_progres", False):
             return
@@ -277,9 +280,15 @@ class AnsiEventListener(sublime_plugin.EventListener):
                 debug(view, "Syntax change detected (running undo command).")
                 view.window().run_command("undo_ansi")
 
-    def _clear_view_listeners(self, view):
+    def _add_event_listeners(self, view):
+        view.settings().add_on_change("CHECK_FOR_ANSI_SYNTAX", lambda: self.detect_syntax_change(view))
+        view.settings().add_on_change("CHECK_FOR_LEFT_ANSI", lambda: self.detect_left_ansi(view))
+        debug(view, "ANSIescape event listeners assigned to view.")
+
+    def _del_event_listeners(self, view):
         view.settings().clear_on_change("CHECK_FOR_ANSI_SYNTAX")
         view.settings().clear_on_change("CHECK_FOR_LEFT_ANSI")
+        debug(view, "ANSIescape event listener removed from view.")
 
 
 class AnsiColorBuildCommand(Default.exec.ExecCommand):
@@ -287,14 +296,17 @@ class AnsiColorBuildCommand(Default.exec.ExecCommand):
     process_trigger = "on_finish"
 
     @classmethod
-    def update_build_settings(cls):
-        print("updating ANSI build settings...")
-        settings = sublime.load_settings("ansi.sublime-settings")
+    def update_build_settings(self, settings):
         val = settings.get("ANSI_process_trigger", "on_finish")
         if val in ["on_finish", "on_data"]:
-            cls.process_trigger = val
+            self.process_trigger = val
         else:
-            print("ANSIescape settings warning: not valid ANSI_process_trigger value. Valid values: 'on_finish' or 'on_data")
+            self.process_trigger = None
+            sublime.error_message("ANSIescape settings warning:\n\nThe setting ANSI_process_trigger has been set to an invalid value; must be one of 'on_finish' or 'on_data'.")
+
+    @classmethod
+    def clear_build_settings(self, settings):
+        self.process_trigger = None
 
     def on_data_process(self, proc, data):
         view = self.output_view
@@ -394,22 +406,32 @@ def generate_color_scheme(cs_file):
 
 
 def plugin_loaded():
+    # create ansi color scheme directory
     ansi_cs_dir = os.path.join(sublime.packages_path(), "User", "ANSIescape")
     if not os.path.exists(ansi_cs_dir):
         os.makedirs(ansi_cs_dir)
+    # create ansi color scheme file
     cs_file = os.path.join(ansi_cs_dir, "ansi.tmTheme")
     if not os.path.isfile(cs_file):
         generate_color_scheme(cs_file)
+    # update the settings for the plugin
     settings = sublime.load_settings("ansi.sublime-settings")
-    AnsiColorBuildCommand.update_build_settings()
+    AnsiColorBuildCommand.update_build_settings(settings)
     settings.add_on_change("ANSI_COLORS_CHANGE", lambda: generate_color_scheme(cs_file))
     settings.add_on_change("ANSI_TRIGGER_CHANGE", lambda: AnsiColorBuildCommand.update_build_settings())
+    # update the setting for each view
     for window in sublime.windows():
         for view in window.views():
-            AnsiEventListener().assign_event_listener(view)
+            AnsiEventListener().process_view_open(view)
 
 
 def plugin_unloaded():
+    # update the settings for the plugin
     settings = sublime.load_settings("ansi.sublime-settings")
+    AnsiColorBuildCommand.clear_build_settings(settings)
     settings.clear_on_change("ANSI_COLORS_CHANGE")
     settings.clear_on_change("ANSI_TRIGGER_CHANGE")
+    # update the setting for each view
+    for window in sublime.windows():
+        for view in window.views():
+            AnsiEventListener().process_view_close(view)
