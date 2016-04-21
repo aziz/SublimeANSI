@@ -235,7 +235,7 @@ class AnsiEventListener(sublime_plugin.EventListener):
         sublime.set_timeout_async(partial(self.check_left_ansi, view), 50)
 
     def check_left_ansi(self, view):
-        if view.window is None:
+        if self._is_view_valid(view):
             self._del_event_listeners(view)
             return
         if view.settings().get("syntax") != "Packages/ANSIescape/ANSI.tmLanguage":
@@ -250,7 +250,7 @@ class AnsiEventListener(sublime_plugin.EventListener):
         debug(view, "ANSI cmd done and no codes left")
 
     def detect_syntax_change(self, view):
-        if view.window is None:
+        if self._is_view_valid(view):
             self._del_event_listeners(view)
             return
         if view.settings().get("ansi_in_progres", False):
@@ -263,6 +263,15 @@ class AnsiEventListener(sublime_plugin.EventListener):
             if view.settings().has("ansi_enabled"):
                 debug(view, "Syntax change detected (running undo command).")
                 view.window().run_command("undo_ansi")
+
+    def _is_view_valid(self, view):
+        if view.window is None:
+            return False
+        if view.window not in sublime.windows():
+            return False
+        if view not in view.window.views():
+            return False
+        return True
 
     def _add_event_listeners(self, view):
         view.settings().add_on_change("CHECK_FOR_ANSI_SYNTAX", lambda: self.detect_syntax_change(view))
