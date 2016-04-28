@@ -142,7 +142,7 @@ class AnsiCommand(sublime_plugin.TextCommand):
             for a, b in regions_points:
                 regions.append(sublime.Region(a, b))
             sum_regions = view.get_regions(scope) + regions
-            view.add_regions(scope, sum_regions, scope, '', sublime.DRAW_NO_OUTLINE)
+            view.add_regions(scope, sum_regions, scope, '', sublime.DRAW_NO_OUTLINE | sublime.PERSISTENT)
 
     def _colorize_ansi_codes(self, edit):
         view = self.view
@@ -158,7 +158,7 @@ class AnsiCommand(sublime_plugin.TextCommand):
             debug(view, "scope: {}\nregex: {}\nregions: {}\n----------\n".format(ansi.scope, ansi.regex, ansi_regions))
             if ansi_regions:
                 sum_regions = view.get_regions(ansi.scope) + ansi_regions
-                view.add_regions(ansi.scope, sum_regions, ansi.scope, '', sublime.DRAW_NO_OUTLINE)
+                view.add_regions(ansi.scope, sum_regions, ansi.scope, '', sublime.DRAW_NO_OUTLINE | sublime.PERSISTENT)
 
         # removing the rest of ansi escape codes
         ansi_codes = view.find_all(r'(\x1b\[[\d;]*m){1,}')
