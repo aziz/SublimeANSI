@@ -195,10 +195,8 @@ class UndoAnsiCommand(sublime_plugin.WindowCommand):
         view.set_read_only(False)
         settings = sublime.load_settings("ansi.sublime-settings")
         view.run_command("undo")
-        for bg in settings.get("ANSI_BG", []):
-            for fg in settings.get("ANSI_FG", []):
-                ansi_scope = "{0}{1}".format(fg['scope'], bg['scope'])
-                view.erase_regions(ansi_scope)
+        for ansi in ansi_definitions():
+            view.erase_regions(ansi.scope)
 
         # restore the view's original scratch and read only settings
         view.set_scratch(view.settings().get("ansi_scratch", False))
