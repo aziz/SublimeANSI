@@ -9,7 +9,7 @@ This plugin solves this annoying problem. Not by just removing the ANSI escape c
 ## Installation
 
 You can install via [Sublime Package Control](http://wbond.net/sublime_packages/package_control)  
-Or you can clone this repository into your SublimeText Packages directory and rename it to `ANSI`
+Or you can clone this repository into your SublimeText Packages directory and rename it to `ANSIescape`
 
 ## Usage
 
