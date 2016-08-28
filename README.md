@@ -42,6 +42,36 @@ Likewise, if you would like to display ANSI colors in your existing [build-comma
 }
 ```
 
+If you use a custom build script and sub-programms don't output color, it could be that they assume the output has no colors. On Linux some applications can be forced to use colors by setting the environment variable `CLICOLOR_FORCE=1`. It is not recommended to set it permanently since it could cause issues if color is not supported and applications still output color. But in a SublimeANSI build you can use it for the usage in a Makefile build script, e.g.: 
+
+```javascript
+// someproject.sublime-project
+{
+    "build_systems":
+    [
+        {
+            /* your existing build command arguments */
+            "name": "Build",
+            "working_dir": "${project_path}",
+            "env": {"CLICOLOR_FORCE": "1"},
+            "cmd": ["sh", "build.sh"],
+
+            /*  add target and syntax */
+            "target": "ansi_color_build",
+            "syntax": "Packages/ANSIescape/ANSI.tmLanguage"
+            
+             "variants":
+            [
+                {
+                    "name": "Clean",
+                    "cmd": ["sh", "build.sh", "clean"]
+                }
+            ]
+        }
+    ]
+}
+```
+
 
 #### Killing the build process
 
