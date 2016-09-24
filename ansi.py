@@ -355,6 +355,13 @@ class AnsiColorBuildCommand(Default.exec.ExecCommand):
         super(AnsiColorBuildCommand, self).on_finished(proc)
         if self.process_trigger == "on_finish":
             view = self.output_view
+            exit_code = proc.exit_code()
+            errors_len = len(self.output_view.find_all_results())
+
+            if (exit_code != None and exit_code != 0) or errors_len > 0:
+                self.window.run_command("show_panel", {"panel": "output.exec"})
+            else:
+                self.window.run_command("hide_panel", {"panel": "output.exec"})
             if view.settings().get("syntax") == "Packages/ANSIescape/ANSI.tmLanguage":
                 view.run_command("ansi", args={"clear_before": True})
 
