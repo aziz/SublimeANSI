@@ -39,7 +39,6 @@
                     }
                 ]
             },
-            { "caption": "Force re-write Sublime Settings", "command": "force_rewrite_sublime_settings" },
         ]
     }
 ]
