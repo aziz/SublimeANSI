@@ -172,6 +172,7 @@ class AnsiCommand(sublime_plugin.TextCommand):
         else:
             self._colorize_regions(regions)
 
+        view.settings().set("spell_check", False)
         view.settings().set("ansi_in_progres", False)
         view.settings().set("ansi_size", view.size())
         view.set_read_only(True)
