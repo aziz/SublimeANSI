@@ -19,7 +19,7 @@
       {"scope": "_bold", "code": "\\x1b\\[(0;)?1m", "color": "#ffffff", "font_style": "bold"}
   ],
   "ANSI_BG": [
-      {"scope": "", "code": "(?<!\\x1b\\[0;4(0|1|2|3|4|5|6|7)m)(?<!\\x1b\\[4(0|1|2|3|4|5|6|7)m)", "color": "#010000"},
+      {"scope": "", "code": "(?<!\\x1b\\[0;4[01234567]m)(?<!\\x1b\\[4[01234567]m)", "color": "#010000"},
       {"scope": "_bg_black", "code": "\\x1b\\[(0;)?40m", "color": "#222222"},
       {"scope": "_bg_red", "code": "\\x1b\\[(0;)?41m", "color": "#c71e12"},
       {"scope": "_bg_green", "code": "\\x1b\\[(0;)?42m", "color": "#00c120"},
