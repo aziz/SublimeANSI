@@ -1,8 +1,7 @@
 [
     {
-        "caption": "Tools",
-        "mnemonic": "T",
         "id": "tools",
+        "mnemonic": "T",
         "children":
         [
             { "caption": "-", "id": "build" },
@@ -38,7 +37,7 @@
                         ]
                     }
                 ]
-            },
+            }
         ]
     }
 ]
