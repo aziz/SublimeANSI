@@ -1,63 +1,105 @@
 # -*- coding: utf-8 -*-
 
-import sublime
-import sublime_plugin
-import inspect
-import os
-import Default
-import re
 from collections import namedtuple
 from functools import partial
-
-AnsiDefinition = namedtuple("AnsiDefinition", "scope regex")
+import bisect
+import Default
+import inspect
+import os
+import re
+import sublime
+import sublime_plugin
 
 DEBUG = False
 
+AnsiDefinition = namedtuple("AnsiDefinition", "scope regex")
+regex_obj_cache = {}
+
 
 def debug(view, msg):
-    if DEBUG:
-        info = inspect.getframeinfo(inspect.stack()[1][0])
-        filepath = os.path.abspath(info.filename)
-        if view.name():
-            name = view.name()
-        elif view.file_name():
-            name = os.path.basename(view.file_name())
-        else:
-            name = "not named"
-        msg = re.sub(r'\n', "\n\t", msg)
-        print("File: \"{0}\", line {1}, window: {2}, view: {3}, file: {4}\n\t{5}".format(
-            filepath,               # 0
-            info.lineno,            # 1
-            view.window().id(),     # 2
-            view.id(),              # 3
-            name,                   # 4
-            msg                     # 5
-        ))
+    if not DEBUG:
+        return
+
+    info = inspect.getframeinfo(inspect.stack()[1][0])
+    filepath = os.path.abspath(info.filename)
+    if view.name():
+        name = view.name()
+    elif view.file_name():
+        name = os.path.basename(view.file_name())
+    else:
+        name = "not named"
+    msg = re.sub(r'\n', "\n\t", msg)
+
+    print("File: \"{path}\", line {lineno}, window: {window_id}, view: {view_id}, file: {name}\n\t{msg}".format_map({
+        'lineno': info.lineno,
+        'msg': msg,
+        'name': name,
+        'path': filepath,
+        'view_id': view.id(),
+        'window_id': view.window().id(),
+    }))
+
+
+def get_regex_obj(regex_string):
+    """
+    @brief Get the regular expression object.
+
+    @param regex_string the regular expression string
+
+    @return The regular expression object.
+    """
+
+    if regex_string not in regex_obj_cache:
+        regex_obj_cache[regex_string] = re.compile(regex_string)
+
+    return regex_obj_cache[regex_string]
+
+
+def fast_view_find_all(view, regex_string):
+    """
+    @brief A faster implementation of View.find_all().
+
+    @param view         the View object
+    @param regex_string the regular expression string
+
+    @return sublime.Region[]
+    """
+
+    regex_obj = get_regex_obj(regex_string)
+    content = view.substr(sublime.Region(0, view.size()))
+
+    iterator = regex_obj.finditer(content)
+
+    if iterator is None:
+        return []
+
+    return [sublime.Region(*(m.span())) for m in iterator]
 
 
 def ansi_definitions(content=None):
 
     settings = sublime.load_settings("ansi.sublime-settings")
-    if content is not None:
+
+    if content is None:
+        bgs = settings.get('ANSI_BG', [])
+        fgs = settings.get('ANSI_FG', [])
+    else:
         # collect colors from file content and make them a string
         color_str = "{0}{1}{0}".format(
             '\x1b',
-            '\x1b'.join(set(re.findall(
-                r'(\[[\d;]*m)',  # find all possible colors
-                content
-            )))
+            '\x1b'.join(set(
+                # find all possible colors
+                re.findall(r'\[[0-9;]*m', content)
+            ))
         )
 
         # filter out unnecessary colors in user settings
-        bgs = [v for v in settings.get("ANSI_BG", []) if re.search(v['code'], color_str) is not None]
-        fgs = [v for v in settings.get("ANSI_FG", []) if re.search(v['code'], color_str) is not None]
-    else:
-        bgs = [v for v in settings.get("ANSI_BG", [])]
-        fgs = [v for v in settings.get("ANSI_FG", [])]
+        bgs = [v for v in settings.get('ANSI_BG', []) if get_regex_obj(v['code']).search(color_str) is not None]
+        fgs = [v for v in settings.get('ANSI_FG', []) if get_regex_obj(v['code']).search(color_str) is not None]
 
     for bg in bgs:
         for fg in fgs:
-            regex = r'(?:(?:{0}{1})|(?:{1}{0}))[^\x1b]*'.format(fg['code'], bg['code'])
+            regex = r'(?:{0}{1}|{1}{0})[^\x1b]*'.format(fg['code'], bg['code'])
             scope = "{0}{1}".format(fg['scope'], bg['scope'])
             yield AnsiDefinition(scope, regex)
 
@@ -73,8 +115,7 @@ class AnsiRegion(object):
         self.regions.append([a, b])
 
     def cut_area(self, a, b):
-        begin = min(a, b)
-        end = max(a, b)
+        begin, end = min(a, b), max(a, b)
         for n, (a, b) in enumerate(self.regions):
             a = self.subtract_region(a, begin, end)
             b = self.subtract_region(b, begin, end)
@@ -146,25 +187,45 @@ class AnsiCommand(sublime_plugin.TextCommand):
 
     def _colorize_ansi_codes(self, edit):
         view = self.view
-        # removing unsupported ansi escape codes before going forward: 2m 4m 5m 7m 8m
-        ansi_unsupported_codes = view.find_all(r'(\x1b\[(0;)?(2|4|5|7|8)m)')
-        ansi_unsupported_codes.reverse()
-        for r in ansi_unsupported_codes:
-            view.replace(edit, r, "\x1b[1m")
 
+        # removing unsupported ansi escape codes before going forward: 2m 4m 5m 7m 8m
+        ansi_unsupported_codes = fast_view_find_all(view, r'\x1b\[(0;)?[24578]m')
+        for r in reversed(ansi_unsupported_codes):
+            view.replace(edit, r, '\x1b[1m')
+
+        # collect ansi regions
+        ansi_regions = {
+            # scope: regions,
+        }
         content = view.substr(sublime.Region(0, view.size()))
         for ansi in ansi_definitions(content):
-            ansi_regions = view.find_all(ansi.regex)
-            debug(view, "scope: {}\nregex: {}\nregions: {}\n----------\n".format(ansi.scope, ansi.regex, ansi_regions))
-            if ansi_regions:
-                sum_regions = view.get_regions(ansi.scope) + ansi_regions
-                view.add_regions(ansi.scope, sum_regions, ansi.scope, '', sublime.DRAW_NO_OUTLINE | sublime.PERSISTENT)
+            regions = fast_view_find_all(view, ansi.regex)
+            if regions:
+                debug(view, "scope: {}\nregex: {}\nregions: {}\n----------\n".format(ansi.scope, ansi.regex, ansi_regions))
+                ansi_regions[ansi.scope] = regions
 
-        # removing the rest of ansi escape codes
-        ansi_codes = view.find_all(r'(\x1b\[[\d;]*m){1,}')
-        ansi_codes.reverse()
-        for r in ansi_codes:
+        # removing ansi escaped codes
+        ansi_codes = fast_view_find_all(view, r'\x1b\[[0-9;]*m')
+        for r in reversed(ansi_codes):
             view.erase(edit, r)
+
+        # build offset correction tables
+        correction_tables = {
+            'points': [0],
+            'offsets': [0],
+        }
+        for r in ansi_codes:
+            correction_tables['points'].append(r.end())
+            correction_tables['offsets'].append(r.size() + correction_tables['offsets'][-1])
+
+        # apply offset correction to ansi regions
+        for scope, regions in ansi_regions.items():
+            for r in regions:
+                r.a -= correction_tables['offsets'][bisect.bisect(correction_tables['points'], r.a) - 1]
+                r.b -= correction_tables['offsets'][bisect.bisect(correction_tables['points'], r.b) - 1]
+            # render corrected ansi regions
+            sum_regions = view.get_regions(scope) + regions
+            view.add_regions(scope, sum_regions, scope, '', sublime.DRAW_NO_OUTLINE | sublime.PERSISTENT)
 
     def _remove_ansi_regions(self):
         view = self.view
@@ -193,7 +254,6 @@ class UndoAnsiCommand(sublime_plugin.WindowCommand):
         view.settings().erase("draw_white_space")
 
         view.set_read_only(False)
-        settings = sublime.load_settings("ansi.sublime-settings")
         view.run_command("undo")
         for ansi in ansi_definitions():
             view.erase_regions(ansi.scope)
@@ -308,7 +368,7 @@ class AnsiColorBuildCommand(Default.exec.ExecCommand):
         str_data = data.decode(self.encoding)
 
         # replace unsupported ansi escape codes before going forward: 2m 4m 5m 7m 8m
-        unsupported_pattern = r'(\x1b\[(0;)?(2|4|5|7|8)m)'
+        unsupported_pattern = r'\x1b\[(0;)?[24578]m'
         str_data = re.sub(unsupported_pattern, "\x1b[1m", str_data)
 
         # find all regions
@@ -322,7 +382,7 @@ class AnsiColorBuildCommand(Default.exec.ExecCommand):
                 ansi_regions.append(new_region)
 
         # remove codes
-        remove_pattern = r'(\x1b\[[\d;]*m){1,}'
+        remove_pattern = r'(\x1b\[[0-9;]*m)+'
         ansi_codes = re.finditer(remove_pattern, str_data)
         ansi_codes = list(ansi_codes)
         ansi_codes.reverse()
