@@ -360,7 +360,8 @@ class AnsiColorBuildCommand(Default.exec.ExecCommand):
         self.process_trigger = None
 
     def on_data_process(self, proc, data):
-        needDataCodec = True if int(sublime.version()) < 3170 else False
+        # note that ST 3169 is the same with 3170
+        needDataCodec = True if int(sublime.version()) < 3169 else False
 
         view = self.output_view
         if not view.settings().get("syntax") == "Packages/ANSIescape/ANSI.tmLanguage":
