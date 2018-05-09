@@ -360,12 +360,17 @@ class AnsiColorBuildCommand(Default.exec.ExecCommand):
         self.process_trigger = None
 
     def on_data_process(self, proc, data):
+        needDataCodec = True if int(sublime.version()) < 3170 else False
+
         view = self.output_view
         if not view.settings().get("syntax") == "Packages/ANSIescape/ANSI.tmLanguage":
             super(AnsiColorBuildCommand, self).on_data(proc, data)
             return
 
-        str_data = data.decode(self.encoding)
+        str_data = data
+
+        if needDataCodec:
+            str_data = str_data.decode(self.encoding)
 
         # replace unsupported ansi escape codes before going forward: 2m 4m 5m 7m 8m
         unsupported_pattern = r'\x1b\[(0;)?[24578]m'
@@ -399,8 +404,11 @@ class AnsiColorBuildCommand(Default.exec.ExecCommand):
             region.shift(shift_val)
             json_ansi_regions.update(region.jsonable())
 
+        if needDataCodec:
+            out_data = out_data.encode(self.encoding)
+
         # send on_data without ansi codes
-        super(AnsiColorBuildCommand, self).on_data(proc, out_data.encode(self.encoding))
+        super(AnsiColorBuildCommand, self).on_data(proc, out_data)
 
         # send ansi command
         view.run_command('ansi', args={"regions": json_ansi_regions})
