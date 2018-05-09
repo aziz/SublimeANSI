@@ -3,7 +3,7 @@
 from collections import namedtuple
 from functools import partial
 import bisect
-from .exec import ExecCommand
+import Default
 import inspect
 import os
 import re
@@ -342,7 +342,7 @@ class AnsiEventListener(sublime_plugin.EventListener):
         debug(view, "ANSIescape event listener removed from view.")
 
 
-class AnsiColorBuildCommand(ExecCommand):
+class AnsiColorBuildCommand(Default.exec.ExecCommand):
 
     process_trigger = "on_finish"
 
