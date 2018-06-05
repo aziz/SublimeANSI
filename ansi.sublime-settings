@@ -1,6 +1,6 @@
 {
   "ANSI_FG": [
-      {"scope": "black", "code": "\\x1b\\[30m", "color": "#000000"},
+      {"scope": "black", "code": "\\x1b\\[(0{,2};)?30m", "color": "#000000"},
       {"scope": "black_light", "code": "\\x1b\\[1;30m", "color": "#686868"},
       {"scope": "red", "code": "\\x1b\\[(0{,2};)?31m", "color": "#c71e12"},
       {"scope": "red_light", "code": "\\x1b\\[1;31m", "color": "#ff6f6b"},
