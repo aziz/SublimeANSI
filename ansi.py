@@ -6,6 +6,7 @@ import bisect
 import Default
 import inspect
 import os
+import threading
 import re
 import sublime
 import sublime_plugin
@@ -345,6 +346,7 @@ class AnsiEventListener(sublime_plugin.EventListener):
 class AnsiColorBuildCommand(Default.exec.ExecCommand):
 
     process_trigger = "on_finish"
+    data_lock = threading.Lock()
 
     @classmethod
     def update_build_settings(self, settings):
@@ -415,17 +417,19 @@ class AnsiColorBuildCommand(Default.exec.ExecCommand):
         view.run_command('ansi', args={"regions": json_ansi_regions})
 
     def on_data(self, proc, data):
-        if self.process_trigger == "on_data":
-            self.on_data_process(proc, data)
-        else:
-            super(AnsiColorBuildCommand, self).on_data(proc, data)
+        with self.data_lock:
+            if self.process_trigger == "on_data":
+                self.on_data_process(proc, data)
+            else:
+                super(AnsiColorBuildCommand, self).on_data(proc, data)
 
     def on_finished(self, proc):
-        super(AnsiColorBuildCommand, self).on_finished(proc)
-        if self.process_trigger == "on_finish":
-            view = self.output_view
-            if view.settings().get("syntax") == "Packages/ANSIescape/ANSI.tmLanguage":
-                view.run_command("ansi", args={"clear_before": True})
+        with self.data_lock:
+            super(AnsiColorBuildCommand, self).on_finished(proc)
+            if self.process_trigger == "on_finish":
+                view = self.output_view
+                if view.settings().get("syntax") == "Packages/ANSIescape/ANSI.tmLanguage":
+                    view.run_command("ansi", args={"clear_before": True})
 
 
 CS_TEMPLATE = """<?xml version="1.0" encoding="UTF-8"?>
