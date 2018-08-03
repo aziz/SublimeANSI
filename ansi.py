@@ -11,6 +11,7 @@ import sublime
 import sublime_plugin
 
 DEBUG = False
+isSpellCheckEnabled = False
 
 AnsiDefinition = namedtuple("AnsiDefinition", "scope regex")
 regex_obj_cache = {}
@@ -172,6 +173,7 @@ class AnsiCommand(sublime_plugin.TextCommand):
         else:
             self._colorize_regions(regions)
 
+        view.settings().set("spell_check", isSpellCheckEnabled)
         view.settings().set("ansi_in_progres", False)
         view.settings().set("ansi_size", view.size())
         view.set_read_only(True)
@@ -348,7 +350,9 @@ class AnsiColorBuildCommand(Default.exec.ExecCommand):
 
     @classmethod
     def update_build_settings(self, settings):
+        global isSpellCheckEnabled
         val = settings.get("ANSI_process_trigger", "on_finish")
+        isSpellCheckEnabled = settings.get("spell_check", False)
         if val in ["on_finish", "on_data"]:
             self.process_trigger = val
         else:
