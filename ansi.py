@@ -142,10 +142,10 @@ class AnsiCommand(sublime_plugin.TextCommand):
 
     def run(self, edit, regions=None, clear_before=False):
         view = self.view
-        if view.settings().get("ansi_in_progres", False):
+        if view.settings().get("ansi_in_progress", False):
             debug(view, "oops ... the ansi command is already in progress")
             return
-        view.settings().set("ansi_in_progres", True)
+        view.settings().set("ansi_in_progress", True)
 
         # if the syntax has not already been changed to ansi this means the command has
         # been run via the sublime console therefore the syntax must be changed manually
@@ -172,7 +172,7 @@ class AnsiCommand(sublime_plugin.TextCommand):
         else:
             self._colorize_regions(regions)
 
-        view.settings().set("ansi_in_progres", False)
+        view.settings().set("ansi_in_progress", False)
         view.settings().set("ansi_size", view.size())
         view.set_read_only(True)
 
@@ -239,10 +239,10 @@ class UndoAnsiCommand(sublime_plugin.WindowCommand):
         view = self.window.active_view()
         # if ansi is in progress or don't have ansi_in_progress setting
         # don't run the command
-        if view.settings().get("ansi_in_progres", True):
+        if view.settings().get("ansi_in_progress", True):
             debug(view, "oops ... the ansi command is already executing")
             return
-        view.settings().set("ansi_in_progres", True)
+        view.settings().set("ansi_in_progress", True)
 
         # if the syntax has not already been changed from ansi this means the command has
         # been run via the sublime console therefore the syntax must be changed manually
@@ -263,7 +263,7 @@ class UndoAnsiCommand(sublime_plugin.WindowCommand):
         view.settings().erase("ansi_scratch")
         view.set_read_only(view.settings().get("ansi_read_only", False))
         view.settings().erase("ansi_read_only")
-        view.settings().erase("ansi_in_progres")
+        view.settings().erase("ansi_in_progress")
         view.settings().erase("ansi_size")
 
 
@@ -298,8 +298,8 @@ class AnsiEventListener(sublime_plugin.EventListener):
             return
         if view.settings().get("syntax") != "Packages/ANSIescape/ANSI.tmLanguage":
             return
-        if view.settings().get("ansi_in_progres", False):
-            debug(view, "ansi in progres")
+        if view.settings().get("ansi_in_progress", False):
+            debug(view, "ansi in progress")
             sublime.set_timeout_async(partial(self.check_left_ansi, view), 50)
             return
         if view.settings().get("ansi_size", view.size()) != view.size():
@@ -311,7 +311,7 @@ class AnsiEventListener(sublime_plugin.EventListener):
         if not self._is_view_valid(view):
             self._del_event_listeners(view)
             return
-        if view.settings().get("ansi_in_progres", False):
+        if view.settings().get("ansi_in_progress", False):
             return
         if view.settings().get("syntax") == "Packages/ANSIescape/ANSI.tmLanguage":
             if not view.settings().has("ansi_enabled"):
