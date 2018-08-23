@@ -346,6 +346,9 @@ class AnsiColorBuildCommand(Default.exec.ExecCommand):
 
     process_trigger = "on_finish"
 
+    # note that ST dev 3169 is identical to ST stable 3170
+    needStringCodec = int(sublime.version()) < 3169
+
     @classmethod
     def update_build_settings(self, settings):
         val = settings.get("ANSI_process_trigger", "on_finish")
@@ -359,19 +362,21 @@ class AnsiColorBuildCommand(Default.exec.ExecCommand):
     def clear_build_settings(self, settings):
         self.process_trigger = None
 
-    def on_data_process(self, proc, data):
-        # note that ST 3169 is the same with 3170
-        needDataCodec = True if int(sublime.version()) < 3169 else False
+    def auto_string_codec(self, string, encodeOrDecode, encoding='UTF-8'):
+        assert encodeOrDecode == 'encode' or encodeOrDecode == 'decode', '`encodeOrDecode` must be either "encode" or "decode"'
 
+        if not self.needStringCodec:
+            return string
+
+        return getattr(string, encodeOrDecode)(encoding)
+
+    def on_data_process(self, proc, data):
         view = self.output_view
         if not view.settings().get("syntax") == "Packages/ANSIescape/ANSI.tmLanguage":
             super(AnsiColorBuildCommand, self).on_data(proc, data)
             return
 
-        str_data = data
-
-        if needDataCodec:
-            str_data = str_data.decode(self.encoding)
+        str_data = self.auto_string_codec(data, 'decode', self.encoding)
 
         # replace unsupported ansi escape codes before going forward: 2m 4m 5m 7m 8m
         unsupported_pattern = r'\x1b\[(0;)?[24578]m'
@@ -398,18 +403,17 @@ class AnsiColorBuildCommand(Default.exec.ExecCommand):
                 r.cut_area(*to_remove)
         out_data = re.sub(remove_pattern, "", str_data)
 
+        out_data = self.auto_string_codec(out_data, 'encode', self.encoding)
+
+        # send on_data without ansi codes
+        super(AnsiColorBuildCommand, self).on_data(proc, out_data)
+
         # create json serialable region representation
         json_ansi_regions = {}
         shift_val = view.size()
         for region in ansi_regions:
             region.shift(shift_val)
             json_ansi_regions.update(region.jsonable())
-
-        if needDataCodec:
-            out_data = out_data.encode(self.encoding)
-
-        # send on_data without ansi codes
-        super(AnsiColorBuildCommand, self).on_data(proc, out_data)
 
         # send ansi command
         view.run_command('ansi', args={"regions": json_ansi_regions})
