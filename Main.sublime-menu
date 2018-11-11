@@ -1,5 +1,14 @@
 [
     {
+        "id": "tools",
+        "mnemonic": "T",
+        "children":
+        [
+            { "caption": "-", "id": "build" },
+            { "command": "ansi_color_build", "args": {"kill": true}, "caption": "Cancel AnsiEscape Build" }
+        ]
+    },
+    {
         "caption": "Preferences",
         "mnemonic": "n",
         "id": "preferences",
