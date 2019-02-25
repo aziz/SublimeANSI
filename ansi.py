@@ -347,7 +347,7 @@ class AnsiColorBuildCommand(Default.exec.ExecCommand):
     process_trigger = "on_finish"
 
     # note that ST dev 3169 is identical to ST stable 3170
-    needStringCodec = int(sublime.version()) < 3169
+    need_string_codec = int(sublime.version()) < 3169
 
     @classmethod
     def update_build_settings(self, settings):
@@ -362,13 +362,13 @@ class AnsiColorBuildCommand(Default.exec.ExecCommand):
     def clear_build_settings(self, settings):
         self.process_trigger = None
 
-    def auto_string_codec(self, string, encodeOrDecode, encoding='UTF-8'):
-        assert encodeOrDecode == 'encode' or encodeOrDecode == 'decode', '`encodeOrDecode` must be either "encode" or "decode"'
+    def auto_string_codec(self, string, encode_or_decode, encoding='UTF-8'):
+        assert encode_or_decode == 'encode' or encode_or_decode == 'decode', '`encode_or_decode` must be either "encode" or "decode"'
 
-        if not self.needStringCodec:
+        if not self.need_string_codec:
             return string
 
-        return getattr(string, encodeOrDecode)(encoding)
+        return getattr(string, encode_or_decode)(encoding)
 
     def on_data_process(self, proc, data):
         view = self.output_view
