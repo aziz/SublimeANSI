@@ -5,6 +5,7 @@ from functools import partial
 import bisect
 import Default
 import inspect
+import json
 import os
 import re
 import sublime
@@ -149,8 +150,8 @@ class AnsiCommand(sublime_plugin.TextCommand):
 
         # if the syntax has not already been changed to ansi this means the command has
         # been run via the sublime console therefore the syntax must be changed manually
-        if view.settings().get("syntax") != "Packages/ANSIescape/ANSI.tmLanguage":
-            view.settings().set("syntax", "Packages/ANSIescape/ANSI.tmLanguage")
+        if view.settings().get("syntax") != "Packages/ANSIescape/ANSI.sublime-syntax":
+            view.settings().set("syntax", "Packages/ANSIescape/ANSI.sublime-syntax")
 
         view.settings().set("ansi_enabled", True)
         view.settings().set("color_scheme", "Packages/User/ANSIescape/ansi.tmTheme")
@@ -246,8 +247,8 @@ class UndoAnsiCommand(sublime_plugin.WindowCommand):
 
         # if the syntax has not already been changed from ansi this means the command has
         # been run via the sublime console therefore the syntax must be changed manually
-        if view.settings().get("syntax") == "Packages/ANSIescape/ANSI.tmLanguage":
-            view.settings().set("syntax", "Packages/Text/Plain text.tmLanguage")
+        if view.settings().get("syntax") == "Packages/ANSIescape/ANSI.sublime-syntax":
+            view.settings().set("syntax", "Packages/Text/Plain text.sublime-syntax")
 
         view.settings().erase("ansi_enabled")
         view.settings().erase("color_scheme")
@@ -281,12 +282,12 @@ class AnsiEventListener(sublime_plugin.EventListener):
     def process_view_open(self, view):
         self._del_event_listeners(view)
         self._add_event_listeners(view)
-        if view.settings().get("syntax") == "Packages/ANSIescape/ANSI.tmLanguage":
+        if view.settings().get("syntax") == "Packages/ANSIescape/ANSI.sublime-syntax":
             view.run_command("ansi")
 
     def process_view_close(self, view):
         self._del_event_listeners(view)
-        #if view.settings().get("syntax") == "Packages/ANSIescape/ANSI.tmLanguage":
+        #if view.settings().get("syntax") == "Packages/ANSIescape/ANSI.sublime-syntax":
         #    view.window().run_command("undo_ansi") ** this needs to be tested **
 
     def detect_left_ansi(self, view):
@@ -296,7 +297,7 @@ class AnsiEventListener(sublime_plugin.EventListener):
         if not self._is_view_valid(view):
             self._del_event_listeners(view)
             return
-        if view.settings().get("syntax") != "Packages/ANSIescape/ANSI.tmLanguage":
+        if view.settings().get("syntax") != "Packages/ANSIescape/ANSI.sublime-syntax":
             return
         if view.settings().get("ansi_in_progress", False):
             debug(view, "ansi in progress")
@@ -313,7 +314,7 @@ class AnsiEventListener(sublime_plugin.EventListener):
             return
         if view.settings().get("ansi_in_progress", False):
             return
-        if view.settings().get("syntax") == "Packages/ANSIescape/ANSI.tmLanguage":
+        if view.settings().get("syntax") == "Packages/ANSIescape/ANSI.sublime-syntax":
             if not view.settings().has("ansi_enabled"):
                 debug(view, "Syntax change detected (running ansi command).")
                 view.run_command("ansi", args={"clear_before": True})
@@ -372,7 +373,7 @@ class AnsiColorBuildCommand(Default.exec.ExecCommand):
 
     def on_data_process(self, proc, data):
         view = self.output_view
-        if not view.settings().get("syntax") == "Packages/ANSIescape/ANSI.tmLanguage":
+        if not view.settings().get("syntax") == "Packages/ANSIescape/ANSI.sublime-syntax":
             super(AnsiColorBuildCommand, self).on_data(proc, data)
             return
 
@@ -428,44 +429,46 @@ class AnsiColorBuildCommand(Default.exec.ExecCommand):
         super(AnsiColorBuildCommand, self).on_finished(proc)
         if self.process_trigger == "on_finish":
             view = self.output_view
-            if view.settings().get("syntax") == "Packages/ANSIescape/ANSI.tmLanguage":
+            if view.settings().get("syntax") == "Packages/ANSIescape/ANSI.sublime-syntax":
                 view.run_command("ansi", args={"clear_before": True})
-
-
-CS_TEMPLATE = """<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0"><dict><key>name</key><string>Ansi</string>
-<key>settings</key><array><dict><key>settings</key><dict>
-<key>background</key><string>%s</string>
-<key>caret</key><string>%s</string>
-<key>foreground</key><string>%s</string>
-<key>gutter</key><string>%s</string>
-<key>gutterForeground</key><string>%s</string>
-<key>invisibles</key><string>%s</string>
-<key>lineHighlight</key><string>%s</string>
-<key>selection</key><string>%s</string>
-</dict></dict>
-%s</array></dict></plist>
-"""
-
-ANSI_SCOPE = "<dict><key>scope</key><string>{0}{1}</string><key>settings</key><dict><key>background</key><string>{2}</string><key>foreground</key><string>{3}</string>{4}</dict></dict>\n"
 
 
 def generate_color_scheme(cs_file, settings):
     print("Regenerating ANSI color scheme...")
-    cs_scopes = ""
+
+    g = settings.get('GENERAL')
+
+    theme = {
+        'name': 'Ansi',
+        'author': 'Auto-generated by Ansi plugin',
+        'globals': {
+            'background': g['background'],
+            'caret': g['caret'],
+            'foreground': g['foreground'],
+            'gutter': g['gutter'],
+            'gutter_foreground': g['gutterForeground'],
+            'invisibles': g['invisibles'],
+            'line_highlight': g['lineHighlight'],
+            'selection': g['selection'],
+        },
+        'rules': [],
+    }
+
     for bg in settings.get("ANSI_BG", []):
         for fg in settings.get("ANSI_FG", []):
+            rule = {
+                'scope': fg['scope'] + bg['scope'],
+                'background': bg['color'],
+                'foreground': fg['color'],
+            }
+
             if (bg.get('font_style') and bg['font_style'] == 'bold') or (fg.get('font_style') and fg['font_style'] == 'bold'):
-                font_style = "<key>fontStyle</key><string>bold</string>"
-            else:
-                font_style = ''
-            cs_scopes += ANSI_SCOPE.format(fg['scope'], bg['scope'], bg['color'], fg['color'], font_style)
-    g = settings.get("GENERAL")
-    vals = [g['background'], g['caret'], g['foreground'], g['gutter'], g['gutterForeground'], g['invisibles'], g['lineHighlight'], g['selection'], cs_scopes]
-    theme = CS_TEMPLATE % tuple(vals)
+                rule['font_style'] = 'bold'
+
+            theme['rules'].append(rule)
+
     with open(cs_file, 'w') as color_scheme:
-        color_scheme.write(theme)
+        color_scheme.write(json.dumps(theme, sort_keys=True, indent=4))
 
 
 def plugin_loaded():
@@ -476,7 +479,7 @@ def plugin_loaded():
     if not os.path.exists(ansi_cs_dir):
         os.makedirs(ansi_cs_dir)
     # create ansi color scheme file
-    cs_file = os.path.join(ansi_cs_dir, "ansi.tmTheme")
+    cs_file = os.path.join(ansi_cs_dir, "ansi.sublime-color-scheme")
     if not os.path.isfile(cs_file):
         generate_color_scheme(cs_file, settings)
     # update the settings for the plugin
