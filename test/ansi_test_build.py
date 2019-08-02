@@ -10,19 +10,20 @@ def print_file_lines(ansi_file):
             time.sleep(0.25)
             print(line)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
 
     if len(sys.argv) > 1:
         ansi_file = sys.argv[1]
     else:
         ansi_file = "ansi_test_file.txt"
 
-    print('=========================')
-    print(' ANSI TEST BUILD STARTED ')
-    print('=========================')
+    print("=========================")
+    print(" ANSI TEST BUILD STARTED ")
+    print("=========================")
 
     print_file_lines(ansi_file)
 
-    print('\n==========================')
-    print(' ANSI TEST BUILD COMPLETE ')
-    print('==========================')
+    print("\n==========================")
+    print(" ANSI TEST BUILD COMPLETE ")
+    print("==========================")

@@ -29,16 +29,20 @@ def debug(view, msg):
         name = os.path.basename(view.file_name())
     else:
         name = "not named"
-    msg = re.sub(r'\n', "\n\t", msg)
+    msg = re.sub(r"\n", "\n\t", msg)
 
-    print("File: \"{path}\", line {lineno}, window: {window_id}, view: {view_id}, file: {name}\n\t{msg}".format_map({
-        'lineno': info.lineno,
-        'msg': msg,
-        'name': name,
-        'path': filepath,
-        'view_id': view.id(),
-        'window_id': view.window().id(),
-    }))
+    print(
+        'File: "{path}", line {lineno}, window: {window_id}, view: {view_id}, file: {name}\n\t{msg}'.format_map(
+            {
+                "lineno": info.lineno,
+                "msg": msg,
+                "name": name,
+                "path": filepath,
+                "view_id": view.id(),
+                "window_id": view.window().id(),
+            }
+        )
+    )
 
 
 def get_regex_obj(regex_string):
@@ -82,31 +86,40 @@ def ansi_definitions(content=None):
     settings = sublime.load_settings("ansi.sublime-settings")
 
     if content is None:
-        bgs = settings.get('ANSI_BG', [])
-        fgs = settings.get('ANSI_FG', [])
+        bgs = settings.get("ANSI_BG", [])
+        fgs = settings.get("ANSI_FG", [])
     else:
         # collect colors from file content and make them a string
         color_str = "{0}{1}{0}".format(
-            '\x1b',
-            '\x1b'.join(set(
-                # find all possible colors
-                re.findall(r'\[[0-9;]*m', content)
-            ))
+            "\x1b",
+            "\x1b".join(
+                set(
+                    # find all possible colors
+                    re.findall(r"\[[0-9;]*m", content)
+                )
+            ),
         )
 
         # filter out unnecessary colors in user settings
-        bgs = [v for v in settings.get('ANSI_BG', []) if get_regex_obj(v['code']).search(color_str) is not None]
-        fgs = [v for v in settings.get('ANSI_FG', []) if get_regex_obj(v['code']).search(color_str) is not None]
+        bgs = [
+            v
+            for v in settings.get("ANSI_BG", [])
+            if get_regex_obj(v["code"]).search(color_str) is not None
+        ]
+        fgs = [
+            v
+            for v in settings.get("ANSI_FG", [])
+            if get_regex_obj(v["code"]).search(color_str) is not None
+        ]
 
     for bg in bgs:
         for fg in fgs:
-            regex = r'(?:{0}{1}|{1}{0})[^\x1b]*'.format(fg['code'], bg['code'])
-            scope = "{0}{1}".format(fg['scope'], bg['scope'])
+            regex = r"(?:{0}{1}|{1}{0})[^\x1b]*".format(fg["code"], bg["code"])
+            scope = "{0}{1}".format(fg["scope"], bg["scope"])
             yield AnsiDefinition(scope, regex)
 
 
 class AnsiRegion(object):
-
     def __init__(self, scope):
         super(AnsiRegion, self).__init__()
         self.scope = scope
@@ -140,7 +153,6 @@ class AnsiRegion(object):
 
 
 class AnsiCommand(sublime_plugin.TextCommand):
-
     def run(self, edit, regions=None, clear_before=False):
         view = self.view
         if view.settings().get("ansi_in_progress", False):
@@ -184,15 +196,17 @@ class AnsiCommand(sublime_plugin.TextCommand):
             for a, b in regions_points:
                 regions.append(sublime.Region(a, b))
             sum_regions = view.get_regions(scope) + regions
-            view.add_regions(scope, sum_regions, scope, '', sublime.DRAW_NO_OUTLINE | sublime.PERSISTENT)
+            view.add_regions(
+                scope, sum_regions, scope, "", sublime.DRAW_NO_OUTLINE | sublime.PERSISTENT
+            )
 
     def _colorize_ansi_codes(self, edit):
         view = self.view
 
         # removing unsupported ansi escape codes before going forward: 2m 4m 5m 7m 8m
-        ansi_unsupported_codes = fast_view_find_all(view, r'\x1b\[(0;)?[24578]m')
+        ansi_unsupported_codes = fast_view_find_all(view, r"\x1b\[(0;)?[24578]m")
         for r in reversed(ansi_unsupported_codes):
-            view.replace(edit, r, '\x1b[1m')
+            view.replace(edit, r, "\x1b[1m")
 
         # collect ansi regions
         ansi_regions = {
@@ -202,31 +216,39 @@ class AnsiCommand(sublime_plugin.TextCommand):
         for ansi in ansi_definitions(content):
             regions = fast_view_find_all(view, ansi.regex)
             if regions:
-                debug(view, "scope: {}\nregex: {}\nregions: {}\n----------\n".format(ansi.scope, ansi.regex, ansi_regions))
+                debug(
+                    view,
+                    "scope: {}\nregex: {}\nregions: {}\n----------\n".format(
+                        ansi.scope, ansi.regex, ansi_regions
+                    ),
+                )
                 ansi_regions[ansi.scope] = regions
 
         # removing ansi escaped codes
-        ansi_codes = fast_view_find_all(view, r'\x1b\[[0-9;]*m')
+        ansi_codes = fast_view_find_all(view, r"\x1b\[[0-9;]*m")
         for r in reversed(ansi_codes):
             view.erase(edit, r)
 
         # build offset correction tables
-        correction_tables = {
-            'points': [0],
-            'offsets': [0],
-        }
+        correction_tables = {"points": [0], "offsets": [0]}
         for r in ansi_codes:
-            correction_tables['points'].append(r.end())
-            correction_tables['offsets'].append(r.size() + correction_tables['offsets'][-1])
+            correction_tables["points"].append(r.end())
+            correction_tables["offsets"].append(r.size() + correction_tables["offsets"][-1])
 
         # apply offset correction to ansi regions
         for scope, regions in ansi_regions.items():
             for r in regions:
-                r.a -= correction_tables['offsets'][bisect.bisect(correction_tables['points'], r.a) - 1]
-                r.b -= correction_tables['offsets'][bisect.bisect(correction_tables['points'], r.b) - 1]
+                r.a -= correction_tables["offsets"][
+                    bisect.bisect(correction_tables["points"], r.a) - 1
+                ]
+                r.b -= correction_tables["offsets"][
+                    bisect.bisect(correction_tables["points"], r.b) - 1
+                ]
             # render corrected ansi regions
             sum_regions = view.get_regions(scope) + regions
-            view.add_regions(scope, sum_regions, scope, '', sublime.DRAW_NO_OUTLINE | sublime.PERSISTENT)
+            view.add_regions(
+                scope, sum_regions, scope, "", sublime.DRAW_NO_OUTLINE | sublime.PERSISTENT
+            )
 
     def _remove_ansi_regions(self):
         view = self.view
@@ -235,7 +257,6 @@ class AnsiCommand(sublime_plugin.TextCommand):
 
 
 class UndoAnsiCommand(sublime_plugin.WindowCommand):
-
     def run(self):
         view = self.window.active_view()
         # if ansi is in progress or don't have ansi_in_progress setting
@@ -269,7 +290,6 @@ class UndoAnsiCommand(sublime_plugin.WindowCommand):
 
 
 class AnsiEventListener(sublime_plugin.EventListener):
-
     def on_new_async(self, view):
         self.process_view_open(view)
 
@@ -287,7 +307,7 @@ class AnsiEventListener(sublime_plugin.EventListener):
 
     def process_view_close(self, view):
         self._del_event_listeners(view)
-        #if view.settings().get("syntax") == "Packages/ANSIescape/ANSI.sublime-syntax":
+        # if view.settings().get("syntax") == "Packages/ANSIescape/ANSI.sublime-syntax":
         #    view.window().run_command("undo_ansi") ** this needs to be tested **
 
     def detect_left_ansi(self, view):
@@ -333,7 +353,9 @@ class AnsiEventListener(sublime_plugin.EventListener):
         return True
 
     def _add_event_listeners(self, view):
-        view.settings().add_on_change("CHECK_FOR_ANSI_SYNTAX", lambda: self.detect_syntax_change(view))
+        view.settings().add_on_change(
+            "CHECK_FOR_ANSI_SYNTAX", lambda: self.detect_syntax_change(view)
+        )
         view.settings().add_on_change("CHECK_FOR_LEFT_ANSI", lambda: self.detect_left_ansi(view))
         debug(view, "ANSIescape event listeners assigned to view.")
 
@@ -357,14 +379,18 @@ class AnsiColorBuildCommand(Default.exec.ExecCommand):
             self.process_trigger = val
         else:
             self.process_trigger = None
-            sublime.error_message("ANSIescape settings warning:\n\nThe setting ANSI_process_trigger has been set to an invalid value; must be one of 'on_finish' or 'on_data'.")
+            sublime.error_message(
+                "ANSIescape settings warning:\n\nThe setting ANSI_process_trigger has been set to an invalid value; must be one of 'on_finish' or 'on_data'."
+            )
 
     @classmethod
     def clear_build_settings(self, settings):
         self.process_trigger = None
 
-    def auto_string_codec(self, string, encode_or_decode, encoding='UTF-8'):
-        assert encode_or_decode == 'encode' or encode_or_decode == 'decode', '`encode_or_decode` must be either "encode" or "decode"'
+    def auto_string_codec(self, string, encode_or_decode, encoding="UTF-8"):
+        assert (
+            encode_or_decode == "encode" or encode_or_decode == "decode"
+        ), '`encode_or_decode` must be either "encode" or "decode"'
 
         if not self.need_string_codec:
             return string
@@ -377,10 +403,10 @@ class AnsiColorBuildCommand(Default.exec.ExecCommand):
             super(AnsiColorBuildCommand, self).on_data(proc, data)
             return
 
-        str_data = self.auto_string_codec(data, 'decode', self.encoding)
+        str_data = self.auto_string_codec(data, "decode", self.encoding)
 
         # replace unsupported ansi escape codes before going forward: 2m 4m 5m 7m 8m
-        unsupported_pattern = r'\x1b\[(0;)?[24578]m'
+        unsupported_pattern = r"\x1b\[(0;)?[24578]m"
         str_data = re.sub(unsupported_pattern, "\x1b[1m", str_data)
 
         # find all regions
@@ -394,7 +420,7 @@ class AnsiColorBuildCommand(Default.exec.ExecCommand):
                 ansi_regions.append(new_region)
 
         # remove codes
-        remove_pattern = r'(\x1b\[[0-9;]*m)+'
+        remove_pattern = r"(\x1b\[[0-9;]*m)+"
         ansi_codes = re.finditer(remove_pattern, str_data)
         ansi_codes = list(ansi_codes)
         ansi_codes.reverse()
@@ -404,7 +430,7 @@ class AnsiColorBuildCommand(Default.exec.ExecCommand):
                 r.cut_area(*to_remove)
         out_data = re.sub(remove_pattern, "", str_data)
 
-        out_data = self.auto_string_codec(out_data, 'encode', self.encoding)
+        out_data = self.auto_string_codec(out_data, "encode", self.encoding)
 
         # send on_data without ansi codes
         super(AnsiColorBuildCommand, self).on_data(proc, out_data)
@@ -417,7 +443,7 @@ class AnsiColorBuildCommand(Default.exec.ExecCommand):
             json_ansi_regions.update(region.jsonable())
 
         # send ansi command
-        view.run_command('ansi', args={"regions": json_ansi_regions})
+        view.run_command("ansi", args={"regions": json_ansi_regions})
 
     def on_data(self, proc, data):
         if self.process_trigger == "on_data":
@@ -436,38 +462,40 @@ class AnsiColorBuildCommand(Default.exec.ExecCommand):
 def generate_color_scheme(cs_file, settings):
     print("Regenerating ANSI color scheme...")
 
-    g = settings.get('GENERAL')
+    g = settings.get("GENERAL")
 
     theme = {
-        'name': 'Ansi',
-        'author': 'Auto-generated by Ansi plugin',
-        'globals': {
-            'background': g['background'],
-            'caret': g['caret'],
-            'foreground': g['foreground'],
-            'gutter': g['gutter'],
-            'gutter_foreground': g['gutterForeground'],
-            'invisibles': g['invisibles'],
-            'line_highlight': g['lineHighlight'],
-            'selection': g['selection'],
+        "name": "Ansi",
+        "author": "Auto-generated by Ansi plugin",
+        "globals": {
+            "background": g["background"],
+            "caret": g["caret"],
+            "foreground": g["foreground"],
+            "gutter": g["gutter"],
+            "gutter_foreground": g["gutterForeground"],
+            "invisibles": g["invisibles"],
+            "line_highlight": g["lineHighlight"],
+            "selection": g["selection"],
         },
-        'rules': [],
+        "rules": [],
     }
 
     for bg in settings.get("ANSI_BG", []):
         for fg in settings.get("ANSI_FG", []):
             rule = {
-                'scope': fg['scope'] + bg['scope'],
-                'background': bg['color'],
-                'foreground': fg['color'],
+                "scope": fg["scope"] + bg["scope"],
+                "background": bg["color"],
+                "foreground": fg["color"],
             }
 
-            if (bg.get('font_style') and bg['font_style'] == 'bold') or (fg.get('font_style') and fg['font_style'] == 'bold'):
-                rule['font_style'] = 'bold'
+            if (bg.get("font_style") and bg["font_style"] == "bold") or (
+                fg.get("font_style") and fg["font_style"] == "bold"
+            ):
+                rule["font_style"] = "bold"
 
-            theme['rules'].append(rule)
+            theme["rules"].append(rule)
 
-    with open(cs_file, 'w') as color_scheme:
+    with open(cs_file, "w") as color_scheme:
         color_scheme.write(json.dumps(theme, sort_keys=True, indent=4))
 
 
@@ -485,7 +513,9 @@ def plugin_loaded():
     # update the settings for the plugin
     AnsiColorBuildCommand.update_build_settings(settings)
     settings.add_on_change("ANSI_COLORS_CHANGE", lambda: generate_color_scheme(cs_file, settings))
-    settings.add_on_change("ANSI_TRIGGER_CHANGE", lambda: AnsiColorBuildCommand.update_build_settings(settings))
+    settings.add_on_change(
+        "ANSI_TRIGGER_CHANGE", lambda: AnsiColorBuildCommand.update_build_settings(settings)
+    )
     # update the setting for each view
     for window in sublime.windows():
         for view in window.views():
