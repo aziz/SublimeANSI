@@ -369,9 +369,6 @@ class AnsiColorBuildCommand(Default.exec.ExecCommand):
 
     process_trigger = "on_finish"
 
-    # note that ST dev 3169 is identical to ST stable 3170
-    need_string_codec = int(sublime.version()) < 3169
-
     @classmethod
     def update_build_settings(self, settings):
         val = settings.get("ANSI_process_trigger", "on_finish")
@@ -387,27 +384,15 @@ class AnsiColorBuildCommand(Default.exec.ExecCommand):
     def clear_build_settings(self, settings):
         self.process_trigger = None
 
-    def auto_string_codec(self, string, encode_or_decode, encoding="UTF-8"):
-        assert (
-            encode_or_decode == "encode" or encode_or_decode == "decode"
-        ), '`encode_or_decode` must be either "encode" or "decode"'
-
-        if not self.need_string_codec:
-            return string
-
-        return getattr(string, encode_or_decode)(encoding)
-
     def on_data_process(self, proc, data):
         view = self.output_view
         if not view.settings().get("syntax") == "Packages/ANSIescape/ANSI.sublime-syntax":
             super(AnsiColorBuildCommand, self).on_data(proc, data)
             return
 
-        str_data = self.auto_string_codec(data, "decode", self.encoding)
-
         # replace unsupported ansi escape codes before going forward: 2m 4m 5m 7m 8m
         unsupported_pattern = r"\x1b\[(0;)?[24578]m"
-        str_data = re.sub(unsupported_pattern, "\x1b[1m", str_data)
+        str_data = re.sub(unsupported_pattern, "\x1b[1m", data)
 
         # find all regions
         ansi_regions = []
@@ -429,8 +414,6 @@ class AnsiColorBuildCommand(Default.exec.ExecCommand):
             for r in ansi_regions:
                 r.cut_area(*to_remove)
         out_data = re.sub(remove_pattern, "", str_data)
-
-        out_data = self.auto_string_codec(out_data, "encode", self.encoding)
 
         # send on_data without ansi codes
         super(AnsiColorBuildCommand, self).on_data(proc, out_data)
