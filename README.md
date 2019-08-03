@@ -105,6 +105,13 @@ Create a file named `ansi.sublime-settings` in your user directory, copy the con
 - Does not render ANSI bold as bold, although we support it. You can assign a unique foreground color to bold items to distinguish them from the rest of the content.
 - Does not support dim, underscore, blink, reverse and hidden text attributes, which is fine since they are not supported by many terminals as well and their usage are pretty rare. 
 
+### Known Issues
+
+#### Not able to paste copied build message into a new buffer view
+
+Just making the new view non-empty so the syntax won't be auto set.
+For example, type a new line before you paste.
+
 ### License
 Copyright 2014-2016 [Allen Bargi](https://twitter.com/aziz). Licensed under the MIT License
 
