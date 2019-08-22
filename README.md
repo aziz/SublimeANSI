@@ -18,9 +18,9 @@ When you see garbage in your editor change the syntax to `ANSI` and you're good!
 The plugin works by detecting the syntax change event and marking ANSI color chars regions with the appropriate scopes matching the style defined in a tmTheme file.
 
 ### Using this plugin as a dependency for your plugin/build output panel
-If you're writing a plugin that builds something using a shell command and shows the results in an output panel, use this plugin! Do not remove ANSI codes, just set the syntax file of your output to `Packages/ANSIescape/ANSI.tmLanguage` and ANSI will take care of color highlighting your terminal output.
+If you're writing a plugin that builds something using a shell command and shows the results in an output panel, use this plugin! Do not remove ANSI codes, just set the syntax file of your output to `Packages/ANSIescape/ANSI.sublime-syntax` and ANSI will take care of color highlighting your terminal output.
 
-Likewise, if you would like to display ANSI colors in your existing [build-command](http://sublime-text-unofficial-documentation.readthedocs.org/en/latest/reference/build_systems/basics.html) output, you would only need to set `ansi_color_build` as the target and `Packages/ANSIescape/ANSI.tmLanguage` as the syntax; for example:
+Likewise, if you would like to display ANSI colors in your existing [build-command](http://sublime-text-unofficial-documentation.readthedocs.org/en/latest/reference/build_systems/basics.html) output, you would only need to set `ansi_color_build` as the target and `Packages/ANSIescape/ANSI.sublime-syntax` as the syntax; for example:
 
 ```javascript
 // someproject.sublime-project
@@ -36,7 +36,7 @@ Likewise, if you would like to display ANSI colors in your existing [build-comma
 
             /*  add target and syntax */
             "target": "ansi_color_build",
-            "syntax": "Packages/ANSIescape/ANSI.tmLanguage"
+            "syntax": "Packages/ANSIescape/ANSI.sublime-syntax"
         }
     ]
 }
@@ -58,7 +58,7 @@ If you use a custom build script and sub-programms don't output color, it could 
 
             /*  add target and syntax */
             "target": "ansi_color_build",
-            "syntax": "Packages/ANSIescape/ANSI.tmLanguage"
+            "syntax": "Packages/ANSIescape/ANSI.sublime-syntax"
             
              "variants":
             [
