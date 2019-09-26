@@ -98,6 +98,15 @@ def fast_view_find_all(view, regex_string):
     return [sublime.Region(*(m.span())) for m in iterator]
 
 
+def is_ansi_syntax(view):
+    syntax = view.settings().get("syntax")
+
+    if not syntax:
+        return False
+
+    return syntax.startswith("Packages/ANSIescape/ANSI.")
+
+
 def ansi_definitions(content=None):
 
     settings = sublime.load_settings("ansi.sublime-settings")
@@ -179,7 +188,7 @@ class AnsiCommand(sublime_plugin.TextCommand):
 
         # if the syntax has not already been changed to ansi this means the command has
         # been run via the sublime console therefore the syntax must be changed manually
-        if view.settings().get("syntax") != "Packages/ANSIescape/ANSI.sublime-syntax":
+        if not is_ansi_syntax(view):
             view.settings().set("syntax", "Packages/ANSIescape/ANSI.sublime-syntax")
 
         view.settings().set("ansi_enabled", True)
@@ -285,7 +294,7 @@ class UndoAnsiCommand(sublime_plugin.WindowCommand):
 
         # if the syntax has not already been changed from ansi this means the command has
         # been run via the sublime console therefore the syntax must be changed manually
-        if view.settings().get("syntax") == "Packages/ANSIescape/ANSI.sublime-syntax":
+        if is_ansi_syntax(view):
             view.settings().set("syntax", "Packages/Text/Plain text.sublime-syntax")
 
         view.settings().erase("ansi_enabled")
@@ -319,7 +328,7 @@ class AnsiEventListener(sublime_plugin.EventListener):
     def process_view_open(self, view):
         self._del_event_listeners(view)
         self._add_event_listeners(view)
-        if view.settings().get("syntax") == "Packages/ANSIescape/ANSI.sublime-syntax":
+        if is_ansi_syntax(view):
             view.run_command("ansi")
 
     def process_view_close(self, view):
@@ -334,7 +343,7 @@ class AnsiEventListener(sublime_plugin.EventListener):
         if not self._is_view_valid(view):
             self._del_event_listeners(view)
             return
-        if view.settings().get("syntax") != "Packages/ANSIescape/ANSI.sublime-syntax":
+        if not is_ansi_syntax(view):
             return
         if view.settings().get("ansi_in_progress", False):
             debug(view, "ansi in progress")
@@ -351,7 +360,7 @@ class AnsiEventListener(sublime_plugin.EventListener):
             return
         if view.settings().get("ansi_in_progress", False):
             return
-        if view.settings().get("syntax") == "Packages/ANSIescape/ANSI.sublime-syntax":
+        if is_ansi_syntax(view):
             if not view.settings().has("ansi_enabled"):
                 debug(view, "Syntax change detected (running ansi command).")
                 view.run_command("ansi", args={"clear_before": True})
@@ -403,7 +412,7 @@ class AnsiColorBuildCommand(Default.exec.ExecCommand):
 
     def on_data_process(self, proc, data):
         view = self.output_view
-        if not view.settings().get("syntax") == "Packages/ANSIescape/ANSI.sublime-syntax":
+        if not is_ansi_syntax(view):
             super(AnsiColorBuildCommand, self).on_data(proc, data)
             return
 
@@ -455,7 +464,7 @@ class AnsiColorBuildCommand(Default.exec.ExecCommand):
         super(AnsiColorBuildCommand, self).on_finished(proc)
         if self.process_trigger == "on_finish":
             view = self.output_view
-            if view.settings().get("syntax") == "Packages/ANSIescape/ANSI.sublime-syntax":
+            if is_ansi_syntax(view):
                 view.run_command("ansi", args={"clear_before": True})
 
 
