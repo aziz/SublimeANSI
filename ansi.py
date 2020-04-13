@@ -340,6 +340,8 @@ class AnsiEventListener(sublime_plugin.EventListener):
         sublime.set_timeout_async(partial(self.check_left_ansi, view), 50)
 
     def check_left_ansi(self, view):
+        if not view:
+            return
         if not self._is_view_valid(view):
             self._del_event_listeners(view)
             return
@@ -370,11 +372,13 @@ class AnsiEventListener(sublime_plugin.EventListener):
                 view.window().run_command("undo_ansi")
 
     def _is_view_valid(self, view):
-        if view.window() is None:
+        window = view.window()
+
+        if window is None:
             return False
-        if view.window() not in sublime.windows():
+        if window not in sublime.windows():
             return False
-        if view not in view.window().views():
+        if view not in window.views():
             return False
         return True
 
