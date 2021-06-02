@@ -192,7 +192,7 @@ class AnsiCommand(sublime_plugin.TextCommand):
             view.settings().set("syntax", "Packages/ANSIescape/ANSI.sublime-syntax")
 
         view.settings().set("ansi_enabled", True)
-        view.settings().set("color_scheme", "Packages/User/ANSIescape/ansi.tmTheme")
+        view.settings().set("color_scheme", "Packages/User/ANSIescape/ansi.sublime-color-scheme")
         view.settings().set("draw_white_space", "none")
 
         # save the view's original scratch and read only settings
