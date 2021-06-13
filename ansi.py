@@ -497,7 +497,7 @@ def generate_color_scheme(cs_file, settings):
         color_scheme.write(json.dumps(theme, sort_keys=True, indent=4))
 
 
-def plugin_loaded():
+def _plugin_loaded():
     # load pluggin settings
     settings = sublime.load_settings("ansi.sublime-settings")
     # create ansi color scheme directory
@@ -518,6 +518,10 @@ def plugin_loaded():
     for window in sublime.windows():
         for view in window.views():
             AnsiEventListener().process_view_open(view)
+
+
+def plugin_loaded():
+    sublime.set_timeout_async(_plugin_loaded)
 
 
 def plugin_unloaded():
