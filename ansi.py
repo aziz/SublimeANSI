@@ -441,15 +441,15 @@ class AnsiColorBuildCommand(Default.exec.ExecCommand):
                 r.cut_area(*to_remove)
         out_data = re.sub(remove_pattern, "", str_data)
 
-        # send on_data without ansi codes
-        super(AnsiColorBuildCommand, self).on_data(proc, out_data)
-
         # create json serialable region representation
         json_ansi_regions = {}
         shift_val = view.size()
         for region in ansi_regions:
             region.shift(shift_val)
             json_ansi_regions.update(region.jsonable())
+            
+        # send on_data without ansi codes
+        super(AnsiColorBuildCommand, self).on_data(proc, out_data)
 
         # send ansi command
         view.run_command("ansi", args={"regions": json_ansi_regions})
