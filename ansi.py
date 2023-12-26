@@ -370,11 +370,12 @@ class AnsiEventListener(sublime_plugin.EventListener):
                 view.window().run_command("undo_ansi")
 
     def _is_view_valid(self, view):
-        if view.window() is None:
+        window = view.window()
+        if window is None:
             return False
-        if view.window() not in sublime.windows():
+        if window not in sublime.windows():
             return False
-        if view not in view.window().views():
+        if view not in window.views():
             return False
         return True
 
@@ -447,7 +448,7 @@ class AnsiColorBuildCommand(Default.exec.ExecCommand):
         for region in ansi_regions:
             region.shift(shift_val)
             json_ansi_regions.update(region.jsonable())
-            
+
         # send on_data without ansi codes
         super(AnsiColorBuildCommand, self).on_data(proc, out_data)
 
