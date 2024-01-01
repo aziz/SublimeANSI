@@ -8,7 +8,7 @@ This plugin solves this annoying problem. Not by just removing the ANSI escape c
 
 ## Installation
 
-You can install via [Sublime Package Control](http://wbond.net/sublime_packages/package_control)  
+You can install via [Sublime Package Control](https://packagecontrol.io/installation): [ANSIescape](https://packagecontrol.io/packages/ANSIescape)  
 Or you can clone this repository into your SublimeText Packages directory and rename it to `ANSIescape`
 
 ## Usage
